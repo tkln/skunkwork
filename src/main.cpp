@@ -141,6 +141,8 @@ int main()
         if (s.isLinked()) {
             s.bind();
             glUniform1f(s.getULoc("uGT"), gT.getSeconds());
+            GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
+            glUniform2fv(s.getULoc("uRes"), 1, res);
             q.render();
         }
 
