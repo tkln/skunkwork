@@ -1,6 +1,7 @@
 # skunkwork
 A lightweight framework for fooling around with GLSL-shaders, mainly designed for
 ray marching. Current features:
+  * Texture-class with parameters exposed by constructor
   * Includes in glsl
   * Log window with correctly parsed shader errors even with includes
   * Auto-reloading shaders when sources are saved
@@ -18,7 +19,7 @@ Just drop the header and dylib/so/lib into `ext/bass/`. [dear imgui](https://git
 are provided as submodules.
 
 ## Building
-The CMake-build should work^tm on Sierra (make + AppleClang, Xcode), Linux (clang) and Windows 10 (Visual Studio 2017). Submodules need be pulled
+The CMake-build should work^tm on Sierra (make + AppleClang), Linux (clang) and Windows 10 (Visual Studio 2017). Submodules need be pulled
 before running cmake:
 ```
 git submodule init
