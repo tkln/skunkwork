@@ -26,7 +26,7 @@ file(GLOB_RECURSE HEADERS include/*.hpp)
 
 add_subdirectory(ext)
 
-include_directories(include)
+include_directories(include ext/rocket/lib)
 
 # Add full path to res directory
 add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
@@ -46,6 +46,7 @@ target_link_libraries(skunkwork
     PRIVATE
     ${OPENGL_LIBRARIES}
     libgl3w
+    librocket
     imgui
 )
 if (MSVC)
