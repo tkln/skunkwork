@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "audioStream.hpp"
 #include "logger.hpp"
 #include "quad.hpp"
 #include "shaderProgram.hpp"
@@ -155,9 +156,17 @@ int main()
     ShaderProgram s(vertPath, fragPath);
 
     Quad q;
+
+    // Set up audio
+    std::string musicPath(RES_DIRECTORY);
+    musicPath += "music/illegal_af.mp3";
+    AudioStream::getInstance().init(musicPath, 90.0, 8);
+
     Timer rT;
     Timer gT;
+
     // Run the main loop
+    AudioStream::getInstance().play();
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
         ImGui_ImplGlfwGL3_NewFrame();
