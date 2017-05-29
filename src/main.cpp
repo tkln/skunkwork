@@ -9,6 +9,7 @@
 #include <imgui_impl_glfw_gl3.h>
 #include <iostream>
 #include <sstream>
+#include <sync.h>
 
 #include "audioStream.hpp"
 #include "logger.hpp"
@@ -29,6 +30,13 @@ namespace {
     float LOGM = 10.f;
     GLfloat CURSOR_POS[] = {0.f, 0.f};
 }
+
+//Set up audio callbacks for rocket
+static struct sync_cb audioSync = {
+    AudioStream::pauseStream,
+    AudioStream::setStreamRow,
+    AudioStream::isStreamPlaying
+};
 
 void keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action,
                  int32_t mods)
@@ -160,15 +168,36 @@ int main()
     // Set up audio
     std::string musicPath(RES_DIRECTORY);
     musicPath += "music/illegal_af.mp3";
-    AudioStream::getInstance().init(musicPath, 90.0, 8);
+    AudioStream::getInstance().init(musicPath, 174.0, 8);
+    int32_t streamHandle = AudioStream::getInstance().getStreamHandle();
+
+    // Set up rocket
+    sync_device *rocket = sync_create_device("sync");
+    if (!rocket) cout << "[rocket] failed to init" << endl;
+
+    // TODO: playback from file
+    int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
+    if (!rocketConnected)
+        cout << "[rocket] failed to connect" << endl;
+
+    // Init rocket tracks here
 
     Timer rT;
     Timer gT;
 
+    if (rocketConnected) AudioStream::getInstance().play();
     // Run the main loop
-    AudioStream::getInstance().play();
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
+
+        // Sync
+        double syncRow = 0.0;
+        if (rocketConnected) {
+            syncRow = AudioStream::getInstance().getRow();
+            if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
+                sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
+        }
+
         ImGui_ImplGlfwGL3_NewFrame();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -206,7 +235,11 @@ int main()
         glfwSwapBuffers(windowPtr);
     }
 
+    // Save rocket tracks
+    sync_save_tracks(rocket);
+
     // Release resources
+    sync_destroy_device(rocket);
     std::cout.rdbuf(oldCout);
     ImGui_ImplGlfwGL3_Shutdown();
     glfwDestroyWindow(windowPtr);
