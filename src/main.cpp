@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include <sync.h>
+#include <track.h>
 
 #include "audioStream.hpp"
 #include "logger.hpp"
@@ -175,7 +176,8 @@ int main()
     sync_device *rocket = sync_create_device("sync");
     if (!rocket) cout << "[rocket] failed to init" << endl;
 
-    // TODO: playback from file
+    // TODO: Defines for client-use?
+    // Try connecting to rocket-server
     int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
     if (!rocketConnected)
         cout << "[rocket] failed to connect" << endl;
@@ -185,18 +187,17 @@ int main()
     Timer rT;
     Timer gT;
 
-    if (rocketConnected) AudioStream::getInstance().play();
+    AudioStream::getInstance().play();
     // Run the main loop
     while (!glfwWindowShouldClose(windowPtr)) {
         glfwPollEvents();
 
         // Sync
-        double syncRow = 0.0;
-        if (rocketConnected) {
-            syncRow = AudioStream::getInstance().getRow();
-            if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
-                sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
-        }
+        double syncRow = AudioStream::getInstance().getRow();
+        // TODO: Defines for client-use?
+        // Try connecting to rocket-server if update fails
+        if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
+            sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
 
         ImGui_ImplGlfwGL3_NewFrame();
 
