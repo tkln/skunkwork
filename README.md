@@ -13,9 +13,9 @@ I have used [emoon's version](https://github.com/emoon/rocket) as my Rocket-serv
 ## Dependencies
 Building skunkwork requires OpenGL and [GLFW3](http://www.glfw.org) with CMake
 being able to find them. BASS is also required and it can be downloaded [here](https://www.un4seen.com/bass.html).
-Just drop the header and dylib/so/lib into `ext/bass/`. [dear imgui](https://github.com/ocornut/imgui),
-[librocket](https://github.com/rocket/rocket) and [pre-generated gl3w](https://github.com/sndels/libgl3w)
-are provided as submodules.
+Just drop the header and dylib/so/lib+dll into `ext/bass/` and `ext/bass/lib/` respectively.
+[dear imgui](https://github.com/ocornut/imgui), [librocket](https://github.com/rocket/rocket)
+and [pre-generated gl3w](https://github.com/sndels/libgl3w) are provided as submodules.
 
 ## Building
 The CMake-build should work^tm on Sierra (make + AppleClang), Linux (clang) and
