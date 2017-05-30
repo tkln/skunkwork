@@ -15,6 +15,7 @@
 #include "audioStream.hpp"
 #include "logger.hpp"
 #include "quad.hpp"
+#include "scene.hpp"
 #include "shaderProgram.hpp"
 #include "timer.hpp"
 
@@ -174,13 +175,6 @@ int main()
     glfwSetCursorPosCallback(windowPtr, cursorCallback);
     glfwSetMouseButtonCallback(windowPtr, mouseButtonCallback);
 
-    // Load shader
-    std::string vertPath(RES_DIRECTORY);
-    vertPath += "shader/basic_vert.glsl";
-    std::string fragPath(RES_DIRECTORY);
-    fragPath += "shader/basic_frag.glsl";
-    ShaderProgram s(vertPath, fragPath);
-
     Quad q;
 
     // Set up audio
@@ -192,6 +186,14 @@ int main()
     // Set up rocket
     sync_device *rocket = sync_create_device("sync");
     if (!rocket) cout << "[rocket] failed to init" << endl;
+
+    // Set up scene
+    std::string vertPath(RES_DIRECTORY);
+    vertPath += "shader/basic_vert.glsl";
+    std::string fragPath(RES_DIRECTORY);
+    fragPath += "shader/basic_frag.glsl";
+    Scene scene(std::vector<std::string>({vertPath, fragPath}),
+                std::vector<std::string>(), rocket);
 
 #ifdef TCPROCKET
     // Try connecting to rocket-server
@@ -247,16 +249,16 @@ int main()
 
         // Try reloading the shader every 0.5s
         if (rT.getSeconds() > 0.5f) {
-            s.reload();
+            scene.reload();
             rT.reset();
         }
 
-        if (s.isLinked()) {
-            s.bind();
-            glUniform1f(s.getULoc("uGT"), gT.getSeconds());
+        if (scene.shaderLinked()) {
+            scene.bind(syncRow);
+            glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
             GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
-            glUniform2fv(s.getULoc("uRes"), 1, res);
-            glUniform2fv(s.getULoc("uMPos"), 1, CURSOR_POS);
+            glUniform2fv(scene.getULoc("uRes"), 1, res);
+            glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
             q.render();
         }
 
