@@ -253,14 +253,12 @@ int main()
             rT.reset();
         }
 
-        if (scene.shaderLinked()) {
-            scene.bind(syncRow);
-            glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
-            GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
-            glUniform2fv(scene.getULoc("uRes"), 1, res);
-            glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
-            q.render();
-        }
+        scene.bind(syncRow);
+        glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
+        GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
+        glUniform2fv(scene.getULoc("uRes"), 1, res);
+        glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
+        q.render();
 
 #ifdef GUI
         ImGui::Render();
