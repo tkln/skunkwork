@@ -14,6 +14,7 @@
 
 #include "audioStream.hpp"
 #include "logger.hpp"
+#include "gpuProfiler.hpp"
 #include "quad.hpp"
 #include "scene.hpp"
 #include "shaderProgram.hpp"
@@ -206,6 +207,7 @@ int main()
 
     Timer rT;
     Timer gT;
+    GpuProfiler sceneProf(5);
 
 #ifdef MUSIC_AUTOPLAY
     AudioStream::getInstance().play();
@@ -237,7 +239,7 @@ int main()
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+            ImGui::Text("FPS: %.1f Scene: %.1f", ImGui::GetIO().Framerate, sceneProf.getAvg());
             if (logCout.str().length() != 0) {
                 logger.AddLog("%s", logCout.str().c_str());
                 logCout.str("");
@@ -253,12 +255,14 @@ int main()
             rT.reset();
         }
 
+        sceneProf.startSample();
         scene.bind(syncRow);
         glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
         glUniform2fv(scene.getULoc("uRes"), 1, res);
         glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
         q.render();
+        sceneProf.endSample();
 
 #ifdef GUI
         ImGui::Render();
