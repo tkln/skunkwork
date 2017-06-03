@@ -5,8 +5,12 @@ ray marching. Current features:
   * Log window with correctly parsed shader errors even with includes
   * Auto-reloading shaders when sources are saved
   * Mercury's [hg_sdf](http://mercury.sexy/hg_sdf) included for CSG
+  * Gpu-"profiler"
+    * Holds a vector of last n deltas for averaging
+    * Timing instances can't be interleaved because GL_TIMESTAMP doesn't work on OSX
   * Music playback via singleton using BASS
-    * Interface for Rocket
+  * Rocket-interface
+  * Wrapper-classes for most of the common resources (Scene, FrameBuffer, Texture etc.)
 
 I have used [emoon's version](https://github.com/emoon/rocket) as my Rocket-server.
 
