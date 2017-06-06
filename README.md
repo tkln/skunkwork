@@ -9,7 +9,7 @@ ray marching. Current features:
     * Holds a vector of last n deltas for averaging
     * Timing instances can't be interleaved because GL_TIMESTAMP doesn't work on OSX
   * Music playback via singleton using BASS
-  * Rocket-interface
+  * Rocket-interface (Windows-build chugs if TCPROCKET is defined but rocket isn't open)
   * Wrapper-classes for most of the common resources (Scene, FrameBuffer, Texture etc.)
 
 I have used [emoon's version](https://github.com/emoon/rocket) as my Rocket-server.
