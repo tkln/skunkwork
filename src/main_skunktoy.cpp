@@ -169,8 +169,8 @@ int main()
     fragPath += "shader/basic_frag.glsl";
     ShaderProgram shader(vertPath, fragPath, "");
 
-    Timer rT;
-    Timer gT;
+    Timer reloadTime;
+    Timer globalTime;
     GpuProfiler sceneProf(5);
 
     // Run the main loop
@@ -200,14 +200,14 @@ int main()
 #endif // GUI
 
         // Try reloading the shader every 0.5s
-        if (rT.getSeconds() > 0.5f) {
+        if (reloadTime.getSeconds() > 0.5f) {
             shader.reload();
-            rT.reset();
+            reloadTime.reset();
         }
 
         sceneProf.startSample();
         shader.bind();
-        glUniform1f(shader.getULoc("uGT"), gT.getSeconds());
+        glUniform1f(shader.getULoc("uTime"), globalTime.getSeconds());
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
         glUniform2fv(shader.getULoc("uRes"), 1, res);
         glUniform2fv(shader.getULoc("uMPos"), 1, CURSOR_POS);

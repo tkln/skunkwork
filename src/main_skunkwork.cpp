@@ -205,8 +205,8 @@ int main()
 
     // Init rocket tracks here
 
-    Timer rT;
-    Timer gT;
+    Timer reloadTime;
+    Timer globalTime;
     GpuProfiler sceneProf(5);
 
 #ifdef MUSIC_AUTOPLAY
@@ -250,14 +250,14 @@ int main()
 #endif // GUI
 
         // Try reloading the shader every 0.5s
-        if (rT.getSeconds() > 0.5f) {
+        if (reloadTime.getSeconds() > 0.5f) {
             scene.reload();
-            rT.reset();
+            reloadTime.reset();
         }
 
         sceneProf.startSample();
         scene.bind(syncRow);
-        glUniform1f(scene.getULoc("uGT"), gT.getSeconds());
+        glUniform1f(scene.getULoc("uTime"), globalTime.getSeconds());
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
         glUniform2fv(scene.getULoc("uRes"), 1, res);
         glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
