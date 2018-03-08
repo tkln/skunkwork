@@ -14,20 +14,32 @@ endif()
 
 find_package(OpenGL REQUIRED)
 
-file(GLOB_RECURSE SOURCES src/*.cpp)
-file(GLOB_RECURSE HEADERS include/*.hpp)
-
 add_subdirectory(ext)
 
-include_directories(include ext/rocket/lib ext/bass ext/glfw/include)
+include_directories(include ext/rocket/lib ext/bass)
 
 # Add full path to res directory
 add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
 
-# WIN32 tells to not build a cmd-app on windows
+# WIN32 tells to not build a cmd-app on windows, includes populate vs-project
 add_executable(skunkwork WIN32
-    ${SOURCES}
-    ${HEADERS}
+    "src/audioStream.cpp"
+    "src/frameBuffer.cpp"
+    "src/gpuProfiler.cpp"
+    "src/main_skunkwork.cpp"
+    "src/quad.cpp"
+    "src/scene.cpp"
+    "src/shaderProgram.cpp"
+    "src/texture.cpp"
+    "src/timer.cpp"
+    "include/audioStream.hpp"
+    "include/frameBuffer.hpp"
+    "include/gpuProfiler.hpp"
+    "include/quad.hpp"
+    "include/scene.hpp"
+    "include/shaderProgram.hpp"
+    "include/texture.hpp"
+    "include/timer.hpp"
 )
 
 target_link_libraries(skunkwork
@@ -61,3 +73,28 @@ add_custom_command(TARGET skunkwork POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                            ${CMAKE_SOURCE_DIR}/ext/bass/lib
                            $<TARGET_FILE_DIR:skunkwork>)
+
+# "ShaderToy" only, doesn't include audio or rocket support
+add_executable(skunktoy WIN32
+    "src/frameBuffer.cpp"
+    "src/gpuProfiler.cpp"
+    "src/main_skunktoy.cpp"
+    "src/quad.cpp"
+    "src/shaderProgram.cpp"
+    "src/texture.cpp"
+    "src/timer.cpp"
+    "include/frameBuffer.hpp"
+    "include/gpuProfiler.hpp"
+    "include/quad.hpp"
+    "include/shaderProgram.hpp"
+    "include/texture.hpp"
+    "include/timer.hpp"
+)
+
+target_link_libraries(skunktoy
+    PRIVATE
+    ${OPENGL_LIBRARIES}
+    glfw
+    libgl3w
+    imgui 
+)
