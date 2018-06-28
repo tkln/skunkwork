@@ -158,6 +158,9 @@ int main()
     logWindowFlags |= ImGuiWindowFlags_NoTitleBar;
     logWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
     bool showLog = true;
+    bool showTweak = true;
+    bool useSlider = false;
+    float sliderTime = 0.f;
 
     Logger logger;
     logger.AddLog("[gl] Context: %s\n     GLSL: %s\n",
@@ -236,6 +239,13 @@ int main()
 #ifdef GUI
         // Update imgui
         {
+            // Tweak
+            ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Always);
+            ImGui::Begin("Tweak", &showTweak, 0);
+            ImGui::Checkbox("Slider time", &useSlider);
+            ImGui::SliderFloat("Time", &sliderTime, 0.f, 150.f);
+            ImGui::End();
+            // Log
             ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
             ImGui::SetNextWindowPos(ImVec2(LOGM, YRES - LOGH - LOGM), ImGuiSetCond_Always);
             ImGui::Begin("Log", &showLog, logWindowFlags);
@@ -257,7 +267,11 @@ int main()
 
         sceneProf.startSample();
         scene.bind(syncRow);
+#ifdef GUI
+        glUniform1f(scene.getULoc("uTime"), useSlider ? sliderTime : globalTime.getSeconds());
+#else
         glUniform1f(scene.getULoc("uTime"), globalTime.getSeconds());
+#endif // GUI
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
         glUniform2fv(scene.getULoc("uRes"), 1, res);
         glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
