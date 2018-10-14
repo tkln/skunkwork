@@ -1,7 +1,9 @@
 # skunkwork
 A lightweight framework for fooling around with GLSL-shaders, mainly designed for demo work. Current features:
   * Includes in glsl
-  * Log window with correctly parsed shader errors even with includes
+    * nesting supported
+    * error lines parsed per file on nv (windows, linux) and intel (osx))
+  * Log window with profiling and shader info
   * Auto-reloading shaders when sources are saved
   * Mercury's [hg_sdf](http://mercury.sexy/hg_sdf) included for CSG
   * Gpu-"profiler"

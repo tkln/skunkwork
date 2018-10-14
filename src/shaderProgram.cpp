@@ -234,7 +234,7 @@ void ShaderProgram::printShaderLog(GLuint shader) const
         // Parse correct file and line numbers to errors
         for (std::string errLine; std::getline(errorStream, errLine);) {
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
             // Only parse if error points to a line
             if (errLine.compare(0, 2, "0(") == 0) {
                 // Extract error line in parsed source
@@ -244,7 +244,7 @@ void ShaderProgram::printShaderLog(GLuint shader) const
             if (errLine.compare(0, 9, "ERROR: 0:") == 0) {
                 auto lineNumEnd = errLine.find(": ", 10);
                 uint32_t lineNum = std::stoi(errLine.substr(9, lineNumEnd - 1));
-#endif // _WIN32
+#endif // _WIN32 or __linux
 
                 std::stack<std::string> files;
                 std::stack<uint32_t> lines;
@@ -274,14 +274,14 @@ void ShaderProgram::printShaderLog(GLuint shader) const
                     lastFile = files.top();
                 }
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
                 // Insert the correct line number to error and print
                 errLine.erase(2, lineNumEnd - 2);
                 errLine.insert(2, std::to_string(lines.top()));
 #else
                 errLine.erase(9, lineNumEnd - 9);
                 errLine.insert(9, std::to_string(lines.top()));
-#endif // _WIN32
+#endif // _WIN32 or __linux
 
             }
             cout << errLine << endl;
