@@ -9,4 +9,4 @@
 	url = https://github.com/kusma/rocket.git
 [submodule "ext/glfw"]
 	path = ext/glfw
-	url = https://github.com/glfw/glfw.git
+	url = https://github.com/sndels/glfw.git
