@@ -8,6 +8,7 @@ set(SKUNKWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/shaderProgram.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/window.cpp
     PARENT_SCOPE
 )
 
@@ -19,5 +20,6 @@ set(SKUNKTOY_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/shaderProgram.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/window.cpp
     PARENT_SCOPE
 )
