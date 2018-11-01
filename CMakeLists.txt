@@ -21,7 +21,7 @@ add_executable(skunkwork WIN32
 )
 target_compile_features(skunkwork
     PRIVATE
-    cxx_std_14
+    cxx_std_17
 )
 if (MSVC)
     target_compile_options(skunkwork
@@ -64,7 +64,7 @@ add_executable(skunktoy WIN32
 )
 target_compile_features(skunktoy
     PRIVATE
-    cxx_std_14
+    cxx_std_17
 )
 if (MSVC)
     target_compile_options(skunktoy

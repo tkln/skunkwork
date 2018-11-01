@@ -196,8 +196,7 @@ int main()
     vertPath += "shader/basic_vert.glsl";
     std::string fragPath(RES_DIRECTORY);
     fragPath += "shader/basic_frag.glsl";
-    Scene scene(std::vector<std::string>({vertPath, fragPath}),
-                std::vector<std::string>(), rocket);
+    Scene scene(std::vector<std::string>({vertPath, fragPath}), rocket);
 
 #ifdef TCPROCKET
     // Try connecting to rocket-server
@@ -268,13 +267,13 @@ int main()
         sceneProf.startSample();
         scene.bind(syncRow);
 #ifdef GUI
-        glUniform1f(scene.getULoc("uTime"), useSlider ? sliderTime : globalTime.getSeconds());
+        scene.shader().setFloat("uTime", useSlider ? sliderTime : globalTime.getSeconds());
 #else
         glUniform1f(scene.getULoc("uTime"), globalTime.getSeconds());
 #endif // GUI
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
-        glUniform2fv(scene.getULoc("uRes"), 1, res);
-        glUniform2fv(scene.getULoc("uMPos"), 1, CURSOR_POS);
+        scene.shader().setVec2("uRes", res);
+        scene.shader().setVec2("uMPos", CURSOR_POS);
         q.render();
         sceneProf.endSample();
 

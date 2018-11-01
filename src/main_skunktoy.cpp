@@ -12,6 +12,7 @@
 
 #include "logger.hpp"
 #include "gpuProfiler.hpp"
+#include "guiWidgets.hpp"
 #include "quad.hpp"
 #include "shaderProgram.hpp"
 #include "timer.hpp"
@@ -196,6 +197,8 @@ int main()
             }
             logger.Draw();
             ImGui::End();
+
+            drawUniformEditor(shader.dynamicUniforms());
         }
 #endif // GUI
 
@@ -207,10 +210,11 @@ int main()
 
         sceneProf.startSample();
         shader.bind();
-        glUniform1f(shader.getULoc("uTime"), globalTime.getSeconds());
+        shader.setFloat("uTime", globalTime.getSeconds());
         GLfloat res[] = {static_cast<GLfloat>(XRES), static_cast<GLfloat>(YRES)};
-        glUniform2fv(shader.getULoc("uRes"), 1, res);
-        glUniform2fv(shader.getULoc("uMPos"), 1, CURSOR_POS);
+        shader.setVec2("uRes", res);
+        shader.setVec2("uMPos", CURSOR_POS);
+        shader.setDynamic();
         q.render();
         sceneProf.endSample();
 

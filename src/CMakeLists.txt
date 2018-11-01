@@ -2,6 +2,7 @@ set(SKUNKWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/audioStream.cpp
     ${CMAKE_CURRENT_LIST_DIR}/frameBuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gpuProfiler.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/guiWidgets.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunkwork.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene.cpp
@@ -14,6 +15,7 @@ set(SKUNKWORK_SOURCES
 set(SKUNKTOY_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/frameBuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gpuProfiler.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/guiWidgets.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunktoy.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
     ${CMAKE_CURRENT_LIST_DIR}/shaderProgram.cpp

@@ -10,13 +10,12 @@ class Scene
 {
 public:
     // Expects shaders to be vert, frag, (geom)
-    Scene(const std::vector<std::string>& shaders,
-          const std::vector<std::string>& syncUniforms, sync_device* rocket);
+    Scene(const std::vector<std::string>& shaders, sync_device* rocket);
     ~Scene() {}
 
     void bind(double syncRow);
     void reload();
-    GLint getULoc(const std::string& uniform);
+    ShaderProgram& shader();
 
 private:
     ShaderProgram                  _shaderProg;
