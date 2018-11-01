@@ -6,8 +6,7 @@ set(SKUNKWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/log.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunkwork.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/scene.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/shaderProgram.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/window.cpp
@@ -21,7 +20,7 @@ set(SKUNKTOY_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/log.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunktoy.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/shaderProgram.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/window.cpp

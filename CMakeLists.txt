@@ -18,7 +18,7 @@ add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
 add_executable(skunkwork WIN32 ${SKUNKWORK_SOURCES})
 target_compile_features(skunkwork
     PRIVATE
-    cxx_std_14
+    cxx_std_17
 )
 if (MSVC)
     target_compile_options(skunkwork
@@ -32,6 +32,7 @@ else()
         -pedantic
     )
 endif()
+target_compile_definitions(skunkwork PRIVATE ROCKET)
 target_include_directories(skunkwork
     PRIVATE
     ${SKUNKWORK_INCLUDE_DIR}
@@ -58,7 +59,7 @@ add_custom_command(TARGET skunkwork POST_BUILD
 add_executable(skunktoy WIN32 ${SKUNKTOY_SOURCES})
 target_compile_features(skunktoy
     PRIVATE
-    cxx_std_14
+    cxx_std_17
 )
 if (MSVC)
     target_compile_options(skunktoy

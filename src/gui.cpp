@@ -10,6 +10,11 @@ namespace {
     float LOGW = 690.f;
     float LOGH = 210.f;
     float LOGM = 10.f;
+
+    inline void uniformOffset()
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 27.f);
+    }
 }
 
 GUI::GUI() :
@@ -45,6 +50,7 @@ float GUI::sliderTime() const
 
 void GUI::startFrame(
     int windowHeight,
+    std::unordered_map<std::string, Uniform>& uniforms,
     const std::vector<std::pair<std::string, const GpuProfiler*>>& timers
 )
 {
@@ -53,12 +59,38 @@ void GUI::startFrame(
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // Tweak
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Always);
+    // Uniform editor
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(300, 200), ImGuiSetCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiSetCond_Once);
-    ImGui::Begin("Tweak");
-    ImGui::Checkbox("Slider time", &_useSliderTime);
-    ImGui::SliderFloat("Time", &_sliderTime, 0.f, 150.f);
+    ImGui::Begin("Uniform Editor");
+    ImGui::Checkbox("##Use slider time", &_useSliderTime);
+    ImGui::SameLine(); ImGui::SliderFloat("uTime", &_sliderTime, 0.f, 150.f);
+    for (auto& e : uniforms) {
+        std::string name = e.first;
+        Uniform& uniform = e.second;
+        switch (uniform.type) {
+        case UniformType::Float:
+            uniformOffset();
+            ImGui::DragFloat(name.c_str(), uniform.value, 0.01f);
+            break;
+        case UniformType::Vec2:
+            uniformOffset();
+            ImGui::DragFloat2(name.c_str(), uniform.value, 0.01f);
+            break;
+        case UniformType::Vec3:
+            ImGui::ColorEdit3(
+                std::string("##" + name).c_str(),
+                uniform.value,
+                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_PickerHueWheel
+            );
+            ImGui::SameLine(); ImGui::DragFloat3(name.c_str(), uniform.value, 0.01f);
+            break;
+        default:
+            ADD_LOG("[gui] Unknown dynamic uniform type\n");
+            break;
+        }
+    }
     ImGui::End();
 
     // Log
@@ -70,6 +102,7 @@ void GUI::startFrame(
         ImGui::SameLine(); ImGui::Text("%s: %.1f", t.first.c_str(), t.second->getAvg());
     }
     GUILog::draw();
+
     ImGui::End();
 }
 

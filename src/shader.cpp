@@ -1,4 +1,4 @@
-#include "shaderProgram.hpp"
+#include "shader.hpp"
 
 #include <fstream>
 #include <cstring>
@@ -8,48 +8,78 @@
 
 #include "log.hpp"
 
-// Get last time modified for file
-time_t getMod(const std::string& path) {
-    struct stat sb;
-    if (stat(path.c_str(), &sb) == -1) {
-        ADD_LOG("[shader] stat failed for '%s'\n", path.c_str());
-        return (time_t) - 1;
+namespace {
+    // Get last time modified for file
+    time_t getMod(const std::string& path) {
+        struct stat sb;
+        if (stat(path.c_str(), &sb) == -1) {
+            ADD_LOG("[shader] stat failed for '%s'\n", path.c_str());
+            return (time_t) - 1;
+        }
+        return sb.st_mtime;
     }
 
-    return sb.st_mtime;
+    std::string toString(UniformType type) {
+        switch (type) {
+        case UniformType::Float:
+            return "float";
+        case UniformType::Vec2:
+            return "vec2";
+        case UniformType::Vec3:
+            return "vec3";
+        default:
+            return "toString(type) unimplemented";
+        }
+    }
 }
 
-ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fragPath,
-                             const std::string& geomPath) :
+#ifdef ROCKET
+Shader::Shader(const std::string& name, sync_device* rocket, const std::string& vertPath,
+               const std::string& fragPath, const std::string& geomPath) :
+    _progID(0),
+    _filePaths(3),
+    _fileMods(3),
+    _name(name),
+    _rocket(rocket)
+{
+    setVendor();
+    GLuint progID = loadProgram(vertPath, fragPath, geomPath);
+    if (progID != 0) _progID = progID;
+}
+#else
+Shader::Shader(const std::string& vertPath, const std::string& fragPath,
+               const std::string& geomPath) :
     _progID(0),
     _filePaths(3),
     _fileMods(3)
 {
-    const char* vendor = (const char*) glGetString(GL_VENDOR);
-    if (strcmp(vendor, "NVIDIA Corporation") == 0)
-        _vendor = Vendor::Nvidia;
-    else if (strcmp(vendor, "Intel Inc.") == 0)
-        _vendor = Vendor::Intel;
-    else {
-        ADD_LOG("[shader] Include aware error parsing not supported for '%s'\n", vendor);
-        _vendor = Vendor::NotSupported;
-    }
-
+    setVendor();
     GLuint progID = loadProgram(vertPath, fragPath, geomPath);
     if (progID != 0) _progID = progID;
 }
+#endif // ROCKET
 
-ShaderProgram::~ShaderProgram()
+Shader::~Shader()
 {
     glDeleteProgram(_progID);
 }
 
-void ShaderProgram::bind() const
+#ifdef ROCKET
+void Shader::bind(double syncRow)
 {
     glUseProgram(_progID);
+    setDynamicUniforms();
+    setRocketUniforms(syncRow);
 }
+#else
+void Shader::bind()
+{
+    glUseProgram(_progID);
+    setDynamicUniforms();
+}
+#endif // ROCKET
 
-bool ShaderProgram::reload()
+bool Shader::reload()
 {
     // Reload shaders if some was modified
     for (auto j = 0u; j < 3; ++j) {
@@ -70,16 +100,36 @@ bool ShaderProgram::reload()
     return false;
 }
 
-GLint ShaderProgram::getULoc(const std::string& uniformName, bool debug) const {
-    GLint uniformLocation = glGetUniformLocation(_progID, uniformName.c_str());
-    if (debug && uniformLocation == -1) {
-        ADD_LOG("[shader] '%s' is not a valid shader variable\n", uniformName.c_str());
-    }
-    return uniformLocation;
+std::unordered_map<std::string, Uniform>& Shader::dynamicUniforms()
+{
+    return _dynamicUniforms;
 }
 
-GLuint ShaderProgram::loadProgram(const std::string vertPath, const std::string fragPath,
-                                  const std::string geomPath)
+void Shader::setFloat(const std::string& name, GLfloat value)
+{
+    setUniform(name, {UniformType::Float, {value, 0.f, 0.f}});
+}
+
+void Shader::setVec2(const std::string& name, GLfloat x, GLfloat y)
+{
+    setUniform(name, {UniformType::Vec2, {x, y, 0.f}});
+}
+
+void Shader::setVendor()
+{
+    const char* vendor = (const char*) glGetString(GL_VENDOR);
+    if (strcmp(vendor, "NVIDIA Corporation") == 0)
+        _vendor = Vendor::Nvidia;
+    else if (strcmp(vendor, "Intel Inc.") == 0)
+        _vendor = Vendor::Intel;
+    else {
+        ADD_LOG("[shader] Include aware error parsing not supported for '%s'\n", vendor);
+        _vendor = Vendor::NotSupported;
+    }
+}
+
+GLuint Shader::loadProgram(const std::string& vertPath, const std::string& fragPath,
+                           const std::string& geomPath)
 {
     // Clear vectors
     for (auto& v : _filePaths) v.clear();
@@ -139,12 +189,96 @@ GLuint ShaderProgram::loadProgram(const std::string vertPath, const std::string 
     glDeleteShader(geometryShader);
     glDeleteShader(fragmentShader);
 
+    // Query uniforms
+    GLint uCount;
+    glGetProgramiv(progID, GL_ACTIVE_UNIFORMS, &uCount);
+    _uniforms.clear();
+    for (GLuint i = 0; i < uCount; ++i) {
+        char name[64];
+        GLenum glType;
+        GLint size;
+        glGetActiveUniform(progID, i, sizeof(name), NULL, &size, &glType, name);
+        UniformType type;
+        switch (glType) {
+        case GL_FLOAT:
+            type = UniformType::Float;
+            break;
+        case GL_FLOAT_VEC2:
+            type = UniformType::Vec2;
+            break;
+        case GL_FLOAT_VEC3:
+            type = UniformType::Vec3;
+            break;
+        default:
+            ADD_LOG("[shader] Unknown uniform type %u\n", glType);
+            break;
+        }
+        _uniforms.insert({name, std::make_pair(type, glGetUniformLocation(progID, name))});
+    }
+
+    // Rebuild uniforms
+    std::unordered_map<std::string, Uniform> newDynamics;
+#ifdef ROCKET
+    std::unordered_map<std::string, const sync_track*> newRockets;
+#endif // ROCKET
+    for (auto& u : _uniforms) {
+        std::string name = u.first;
+
+#ifdef ROCKET
+        // TODO: Rocket uniforms
+        if (name[0] == 'r') {
+            // Check type
+            UniformType type = u.second.first;
+            if (type != UniformType::Float) {
+                ADD_LOG("[shader] '%s' should be float to use it with Rocket\n", name.c_str());
+                continue;
+            }
+            // Add existing value if present
+            if (auto existing = _rocketUniforms.find(name); existing != _rocketUniforms.end()) {
+                newRockets.insert(*existing);
+                continue;
+            }
+
+            // Init new
+            newRockets.insert({name, sync_get_track(_rocket, (_name + ":" + name).c_str())});
+        }
+#endif // ROCKET
+
+        // Skip uniforms not labelled as dynamic
+        if (name[0] != 'd')
+            continue;
+
+        // Add existing value if present
+        if (auto existing = _dynamicUniforms.find(name); existing != _dynamicUniforms.end()) {
+            newDynamics.insert(*existing);
+            continue;
+        }
+
+
+        // Init new uniform
+        UniformType type = u.second.first;
+        switch (type) {
+        case UniformType::Float:
+        case UniformType::Vec2:
+        case UniformType::Vec3:
+            newDynamics.insert({u.first, {type, {0.f, 0.f, 0.f}}});
+            break;
+        default:
+            ADD_LOG("[shader] Unimplemented dynamic uniform of type '%s'\n", toString(type).c_str());
+            break;
+        }
+    }
+    _dynamicUniforms = newDynamics;
+#ifdef ROCKET
+    _rocketUniforms = newRockets;
+#endif // ROCKET
+
     ADD_LOG("[shader] Shader %u loaded\n", progID);
 
     return progID;
 }
 
-GLuint ShaderProgram::loadShader(const std::string& mainPath, GLenum shaderType)
+GLuint Shader::loadShader(const std::string& mainPath, GLenum shaderType)
 {
     GLuint shaderID = 0;
     std::string shaderStr = parseFromFile(mainPath, shaderType);
@@ -164,7 +298,7 @@ GLuint ShaderProgram::loadShader(const std::string& mainPath, GLenum shaderType)
     return shaderID;
 }
 
-std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum shaderType)
+std::string Shader::parseFromFile(const std::string& filePath, GLenum shaderType)
 {
     std::ifstream sourceFile(filePath.c_str());
     std::string shaderStr;
@@ -208,7 +342,7 @@ std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum sha
     return shaderStr;
 }
 
-void ShaderProgram::printProgramLog(GLuint program) const
+void Shader::printProgramLog(GLuint program) const
 {
     if (glIsProgram(program) == GL_TRUE) {
         GLint maxLength = 0;
@@ -222,7 +356,7 @@ void ShaderProgram::printProgramLog(GLuint program) const
     }
 }
 
-void ShaderProgram::printShaderLog(GLuint shader) const
+void Shader::printShaderLog(GLuint shader) const
 {
     if (glIsShader(shader) == GL_TRUE) {
         // Get errors
@@ -314,3 +448,60 @@ void ShaderProgram::printShaderLog(GLuint shader) const
         ADD_LOG("[shader] ID %u is not a shader\n", shader);
     }
 }
+
+GLint Shader::getUniform(const std::string& name, UniformType type) const
+{
+    if (_progID == 0)
+        return -1;
+
+    auto uniform = _uniforms.find(name);
+    if (uniform == _uniforms.end()) {
+        ADD_LOG("[shader] Uniform '%s' not found\n", name.c_str());
+        return -1;
+    }
+
+    auto [actualType, location] = uniform->second;
+    if (type != actualType) {
+        ADD_LOG("[shader] Uniform '%s' is not of type '%s'\n", name.c_str(), toString(type).c_str());
+        return -1;
+    }
+    return location;
+}
+
+void Shader::setUniform(const std::string& name, const Uniform& uniform)
+{
+    GLint location = getUniform(name, uniform.type);
+    switch (uniform.type) {
+    case UniformType::Float:
+        glUniform1f(location, *uniform.value);
+        break;
+    case UniformType::Vec2:
+        glUniform2fv(location, 1, uniform.value);
+        break;
+    case UniformType::Vec3:
+        glUniform3fv(location, 1, uniform.value);
+        break;
+    default:
+        ADD_LOG(
+            "[shader] Setting uniform of type '%s' is unimplemented\n",
+            toString(uniform.type).c_str()
+        );
+        break;
+    }
+}
+
+void Shader::setDynamicUniforms()
+{
+    for (auto& u : _dynamicUniforms) {
+        setUniform(u.first, u.second);
+    }
+}
+
+#ifdef ROCKET
+void Shader::setRocketUniforms(double syncRow)
+{
+    for (auto& u : _rocketUniforms) {
+        setUniform(u.first, {UniformType::Float, {(GLfloat)sync_get_val(u.second, syncRow), 0.f, 0.f}});
+    }
+}
+#endif // ROCKET

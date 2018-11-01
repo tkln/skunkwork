@@ -8,7 +8,7 @@
 #include "gpuProfiler.hpp"
 #include "gui.hpp"
 #include "quad.hpp"
-#include "shaderProgram.hpp"
+#include "shader.hpp"
 #include "timer.hpp"
 #include "window.hpp"
 
@@ -39,7 +39,7 @@ int main()
     vertPath += "shader/basic_vert.glsl";
     std::string fragPath(RES_DIRECTORY);
     fragPath += "shader/basic_frag.glsl";
-    ShaderProgram shader(vertPath, fragPath, "");
+    Shader shader(vertPath, fragPath, "");
 
     Timer reloadTime;
     Timer globalTime;
@@ -52,7 +52,7 @@ int main()
         window.startFrame();
 
         if (window.drawGUI())
-            gui.startFrame(window.height(), profilers);
+            gui.startFrame(window.height(), shader.dynamicUniforms(), profilers);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -64,10 +64,11 @@ int main()
 
         sceneProf.startSample();
         shader.bind();
-        glUniform1f(shader.getULoc("uTime"),
-                    gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds());
-        GLfloat res[] = {static_cast<GLfloat>(window.width()), static_cast<GLfloat>(window.height())};
-        glUniform2fv(shader.getULoc("uRes"), 1, res);
+        shader.setFloat(
+            "uTime",
+            gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds()
+        );
+        shader.setVec2("uRes", (GLfloat)window.width(), (GLfloat)window.height());
         q.render();
         sceneProf.endSample();
 

@@ -3,6 +3,7 @@
     #include <windows.h>
 #endif // _WIN32
 
+#include <cmath>
 #include <GL/gl3w.h>
 #include <sync.h>
 #include <track.h>
@@ -12,8 +13,7 @@
 #include "gui.hpp"
 #include "log.hpp"
 #include "quad.hpp"
-#include "scene.hpp"
-#include "shaderProgram.hpp"
+#include "shader.hpp"
 #include "timer.hpp"
 #include "window.hpp"
 
@@ -71,12 +71,11 @@ int main()
     vertPath += "shader/basic_vert.glsl";
     std::string fragPath(RES_DIRECTORY);
     fragPath += "shader/basic_frag.glsl";
-    Scene scene(std::vector<std::string>({vertPath, fragPath}),
-                std::vector<std::string>(), rocket);
+    Shader shader("Scene", rocket, vertPath, fragPath);
 
 #ifdef TCPROCKET
     // Try connecting to rocket-server
-    int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
+    int rocketConnected = sync_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
     if (!rocketConnected)
         ADD_LOG("[rocket] Failed to connect to server\n");
 #endif // TCPROCKET
@@ -104,27 +103,27 @@ int main()
         // Try re-connecting to rocket-server if update fails
         // Drops all the frames, if trying to connect on windows
         if (sync_update(rocket, (int)floor(syncRow), &audioSync, (void *)&streamHandle))
-            sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
+            sync_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
 #endif // TCPROCKET
 
         if (window.drawGUI())
-            gui.startFrame(window.height(), profilers);
+            gui.startFrame(window.height(), shader.dynamicUniforms(), profilers);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Try reloading the shader every 0.5s
         if (reloadTime.getSeconds() > 0.5f) {
-            scene.reload();
+            shader.reload();
             reloadTime.reset();
         }
 
         sceneProf.startSample();
-        scene.bind(syncRow);
-
-        glUniform1f(scene.getULoc("uTime"),
-                    gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds());
-        GLfloat res[] = {static_cast<GLfloat>(window.width()), static_cast<GLfloat>(window.height())};
-        glUniform2fv(scene.getULoc("uRes"), 1, res);
+        shader.bind(syncRow);
+        shader.setFloat(
+            "uTime",
+            gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds()
+        );
+        shader.setVec2("uRes", (GLfloat)window.width(), (GLfloat)window.height());
         q.render();
         sceneProf.endSample();
 
