@@ -15,10 +15,7 @@ add_definitions(-DRES_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/res/")
 
 # Set up project targets
 # WIN32 tells to not build a cmd-app on windows
-add_executable(skunkwork WIN32
-    ${SKUNKWORK_SOURCES}
-    ${SKUNKWORK_HEADERS}
-)
+add_executable(skunkwork WIN32 ${SKUNKWORK_SOURCES})
 target_compile_features(skunkwork
     PRIVATE
     cxx_std_14
@@ -58,10 +55,7 @@ add_custom_command(TARGET skunkwork POST_BUILD
                            $<TARGET_FILE_DIR:skunkwork>)
 
 # "shadertoy" only, doesn't include audio or rocket support
-add_executable(skunktoy WIN32
-    ${SKUNKTOY_SOURCES}
-    ${SKUNKTOY_HEADERS}
-)
+add_executable(skunktoy WIN32 ${SKUNKTOY_SOURCES})
 target_compile_features(skunktoy
     PRIVATE
     cxx_std_14
@@ -80,7 +74,7 @@ else()
 endif()
 target_include_directories(skunktoy
     PRIVATE
-    ${SKUNKTOY_INCLUDE_DIR}
+    ${SKUNKWORK_INCLUDE_DIR}
 )
 target_link_libraries(skunktoy
     PRIVATE
