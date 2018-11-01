@@ -1,6 +1,7 @@
 #include "shaderProgram.hpp"
 
 #include <fstream>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <stack>
@@ -26,6 +27,16 @@ ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fra
     _filePaths(3),
     _fileMods(3)
 {
+    const char* vendor = (const char*) glGetString(GL_VENDOR);
+    if (strcmp(vendor, "NVIDIA Corporation") == 0)
+        _vendor = Vendor::Nvidia;
+    else if (strcmp(vendor, "Intel Inc.") == 0)
+        _vendor = Vendor::Intel;
+    else {
+        cout << "[shader] Include aware error parsing not supported for '" << vendor << "'" << endl;
+        _vendor = Vendor::NotSupported;
+    }
+
     GLuint progID = loadProgram(vertPath, fragPath, geomPath);
     if (progID != 0) _progID = progID;
 }
@@ -218,11 +229,19 @@ void ShaderProgram::printProgramLog(GLuint program) const
 void ShaderProgram::printShaderLog(GLuint shader) const
 {
     if (glIsShader(shader) == GL_TRUE) {
-        // Get errors to a stream
+        // Get errors
         GLint maxLength = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
         char* errorLog = new char[maxLength];
         glGetShaderInfoLog(shader, maxLength, &maxLength, errorLog);
+
+        if (_vendor == Vendor::NotSupported) {
+            cout << errorLog << endl;
+            delete[] errorLog;
+            return;
+        }
+
+        // Convert error string to a stream for easy line access
         std::istringstream errorStream(errorLog);
 
         // Get source string
@@ -230,21 +249,32 @@ void ShaderProgram::printShaderLog(GLuint shader) const
         char* shaderStr = new char[maxLength];
         glGetShaderSource(shader, maxLength, &maxLength, shaderStr);
 
+        // Set up vendor specific parsing
+        std::string linePrefix;
+        char lineNumCutoff;
+        if (_vendor == Vendor::Nvidia) {
+            linePrefix = "0(";
+            lineNumCutoff = ')';
+        } else if (_vendor == Vendor::Intel) {
+            linePrefix = "ERROR: 0:";
+            lineNumCutoff = ':';
+        } else {
+            cout << "Unimplemented vendor" << endl;
+            cout << errorLog << endl;
+            delete[] errorLog;
+            delete[] shaderStr;
+            return;
+        }
+
         std::string lastFile;
         // Parse correct file and line numbers to errors
         for (std::string errLine; std::getline(errorStream, errLine);) {
 
-#if defined(_WIN32) || defined(__linux__)
             // Only parse if error points to a line
-            if (errLine.compare(0, 2, "0(") == 0) {
+            if (errLine.compare(0, linePrefix.length(), linePrefix) == 0) {
                 // Extract error line in parsed source
-                auto lineNumEnd = errLine.find(')', 3);
-                uint32_t lineNum = std::stoi(errLine.substr(2, lineNumEnd - 1));
-#else
-            if (errLine.compare(0, 9, "ERROR: 0:") == 0) {
-                auto lineNumEnd = errLine.find(": ", 10);
-                uint32_t lineNum = std::stoi(errLine.substr(9, lineNumEnd - 1));
-#endif // _WIN32 or __linux
+                auto lineNumEnd = errLine.find(lineNumCutoff, linePrefix.length() + 1);
+                uint32_t lineNum = std::stoi(errLine.substr(linePrefix.length(), lineNumEnd - 1));
 
                 std::stack<std::string> files;
                 std::stack<uint32_t> lines;
@@ -274,15 +304,9 @@ void ShaderProgram::printShaderLog(GLuint shader) const
                     lastFile = files.top();
                 }
 
-#if defined(_WIN32) || defined(__linux__)
                 // Insert the correct line number to error and print
-                errLine.erase(2, lineNumEnd - 2);
-                errLine.insert(2, std::to_string(lines.top()));
-#else
-                errLine.erase(9, lineNumEnd - 9);
-                errLine.insert(9, std::to_string(lines.top()));
-#endif // _WIN32 or __linux
-
+                errLine.erase(linePrefix.length(), lineNumEnd - linePrefix.length());
+                errLine.insert(linePrefix.length(), std::to_string(lines.top()));
             }
             cout << errLine << endl;
         }

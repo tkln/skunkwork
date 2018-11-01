@@ -7,6 +7,12 @@
 
 class ShaderProgram
 {
+    enum class Vendor {
+        Nvidia,
+        Intel,
+        NotSupported
+    };
+
 public:
     ShaderProgram(const std::string& vertPath, const std::string& fragPath,
                   const std::string& geomPath = std::string());
@@ -24,6 +30,7 @@ private:
     void printProgramLog(GLuint program) const;
     void printShaderLog(GLuint shader) const;
 
+    Vendor                                  _vendor;
     GLuint                                  _progID;
     std::vector<std::vector<std::string> >  _filePaths;
     std::vector<std::vector<time_t> >       _fileMods;
