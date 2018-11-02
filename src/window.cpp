@@ -8,6 +8,7 @@ bool Window::init(int w, int h, const std::string& title)
 {
     _w = w;
     _h = h;
+    _drawGUI = true;
     // Init GLFW-context
     glfwSetErrorCallback(errorCallback);
     if (!glfwInit())
@@ -81,6 +82,11 @@ int Window::height() const
     return _h;
 }
 
+bool Window::drawGUI() const
+{
+    return _drawGUI;
+}
+
 void Window::startFrame()
 {
     glfwPollEvents();
@@ -130,12 +136,16 @@ void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int
 
 void Window::keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int32_t action, int32_t mods)
 {
+    Window* thisPtr = (Window*)glfwGetWindowUserPointer(window);
     // Skip key events when e.g. editing an input field
     if (!ImGui::IsAnyItemActive()) {
         if (action == GLFW_PRESS) {
             switch (key) {
             case GLFW_KEY_ESCAPE:
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
+                break;
+            case GLFW_KEY_G:
+                thisPtr->_drawGUI = !thisPtr->_drawGUI;
                 break;
             default: 
                 break;

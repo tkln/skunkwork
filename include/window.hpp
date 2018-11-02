@@ -16,6 +16,7 @@ public:
     GLFWwindow* ptr() const;
     int width() const;
     int height() const;
+    bool drawGUI() const;
 
     void startFrame();
     void endFrame() const;
@@ -31,6 +32,7 @@ public:
 private:
     GLFWwindow* _window;
     int _w, _h;
+    bool _drawGUI;
 };
 
 #endif // SKUNKWORK_WINDOW_HPP

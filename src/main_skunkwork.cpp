@@ -13,8 +13,8 @@
 #include <track.h>
 
 #include "audioStream.hpp"
-#include "logger.hpp"
 #include "gpuProfiler.hpp"
+#include "gui.hpp"
 #include "quad.hpp"
 #include "scene.hpp"
 #include "shaderProgram.hpp"
@@ -25,18 +25,10 @@
 //#define MUSIC_AUTOPLAY
 // Comment out to load sync from files
 //#define TCPROCKET
-// Comment out to remove gui
-#define GUI
 
 using std::cout;
 using std::cerr;
 using std::endl;
-
-namespace {
-    float LOGW = 690.f;
-    float LOGH = 210.f;
-    float LOGM = 10.f;
-}
 
 //Set up audio callbacks for rocket
 static struct sync_cb audioSync = {
@@ -61,27 +53,9 @@ int main()
     if (!window.init(1280, 720, "skunkwork"))
         return -1;
 
-#ifdef GUI
     // Setup imgui
-    ImGui_ImplGlfwGL3_Init(window.ptr(), true);
-    ImGuiWindowFlags logWindowFlags= 0;
-    logWindowFlags |= ImGuiWindowFlags_NoTitleBar;
-    logWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
-    bool showLog = true;
-    bool showTweak = true;
-    bool useSlider = false;
-    float sliderTime = 0.f;
-
-    Logger logger;
-    logger.AddLog("[gl] Context: %s\n     GLSL: %s\n",
-                   glGetString(GL_VERSION),
-                   glGetString(GL_SHADING_LANGUAGE_VERSION));
-
-
-    // Capture cout for logging
-    std::stringstream logCout;
-    std::streambuf* oldCout = std::cout.rdbuf(logCout.rdbuf());
-#endif // GUI
+    GUI gui;
+    gui.init(window.ptr());
 
     Quad q;
 
@@ -115,6 +89,8 @@ int main()
     Timer reloadTime;
     Timer globalTime;
     GpuProfiler sceneProf(5);
+    std::vector<std::pair<std::string, const GpuProfiler*>> profilers = 
+        {{"Scene", &sceneProf}};
 
 #ifdef MUSIC_AUTOPLAY
     AudioStream::getInstance().play();
@@ -134,34 +110,10 @@ int main()
             sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT);
 #endif // TCPROCKET
 
-#ifdef GUI
-        ImGui_ImplGlfwGL3_NewFrame();
-#endif // GUI
+        if (window.drawGUI())
+            gui.startFrame(window.height(), profilers);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-#ifdef GUI
-        // Update imgui
-        {
-            // Tweak
-            ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Always);
-            ImGui::Begin("Tweak", &showTweak, 0);
-            ImGui::Checkbox("Slider time", &useSlider);
-            ImGui::SliderFloat("Time", &sliderTime, 0.f, 150.f);
-            ImGui::End();
-            // Log
-            ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Once);
-            ImGui::SetNextWindowPos(ImVec2(LOGM, window.height() - LOGH - LOGM), ImGuiSetCond_Always);
-            ImGui::Begin("Log", &showLog, logWindowFlags);
-            ImGui::Text("Frame: %.1f Scene: %.1f", 1000.f / ImGui::GetIO().Framerate, sceneProf.getAvg());
-            if (logCout.str().length() != 0) {
-                logger.AddLog("%s", logCout.str().c_str());
-                logCout.str("");
-            }
-            logger.Draw();
-            ImGui::End();
-        }
-#endif // GUI
 
         // Try reloading the shader every 0.5s
         if (reloadTime.getSeconds() > 0.5f) {
@@ -171,19 +123,16 @@ int main()
 
         sceneProf.startSample();
         scene.bind(syncRow);
-#ifdef GUI
-        glUniform1f(scene.getULoc("uTime"), useSlider ? sliderTime : globalTime.getSeconds());
-#else
-        glUniform1f(scene.getULoc("uTime"), globalTime.getSeconds());
-#endif // GUI
+
+        glUniform1f(scene.getULoc("uTime"),
+                    gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds());
         GLfloat res[] = {static_cast<GLfloat>(window.width()), static_cast<GLfloat>(window.height())};
         glUniform2fv(scene.getULoc("uRes"), 1, res);
         q.render();
         sceneProf.endSample();
 
-#ifdef GUI
-        ImGui::Render();
-#endif // GUI
+        if (window.drawGUI())
+            gui.endFrame();
 
         window.endFrame();
 
@@ -198,11 +147,7 @@ int main()
     // Release resources
     sync_destroy_device(rocket);
 
-#ifdef GUI
-    std::cout.rdbuf(oldCout);
-    ImGui_ImplGlfwGL3_Shutdown();
-#endif // GUI
-
+    gui.destroy();
     window.destroy();
     exit(EXIT_SUCCESS);
 }
