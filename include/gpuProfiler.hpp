@@ -12,7 +12,7 @@ public:
 
     void startSample();
     void endSample();
-    float getAvg();
+    float getAvg() const;
 
 private:
     GLuint             _queryIDs[2];

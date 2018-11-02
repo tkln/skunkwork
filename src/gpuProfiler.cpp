@@ -27,7 +27,7 @@ void GpuProfiler::endSample()
     _backActive = !_backActive;
 }
 
-float GpuProfiler::getAvg()
+float GpuProfiler::getAvg() const
 {
     float sum = 0.f;
     for (auto i : _times) sum += i;
