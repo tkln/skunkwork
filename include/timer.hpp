@@ -10,7 +10,7 @@ public:
     ~Timer() {}
 
     void reset();
-    float getSeconds();
+    float getSeconds() const;
 
 private:
     std::chrono::time_point<std::chrono::system_clock> _start;
