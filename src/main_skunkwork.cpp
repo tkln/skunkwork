@@ -25,12 +25,14 @@
 // Comment out to load sync from files
 //#define TCPROCKET
 
+#ifdef TCPROCKET
 //Set up audio callbacks for rocket
 static struct sync_cb audioSync = {
     AudioStream::pauseStream,
     AudioStream::setStreamRow,
     AudioStream::isStreamPlaying
 };
+#endif // TCPROCKET
 
 #ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
@@ -54,11 +56,13 @@ int main()
 
     Quad q;
 
+#if (defined(TCPROCKET) || defined(MUSIC_AUTOPLAY))
     // Set up audio
     std::string musicPath(RES_DIRECTORY);
     musicPath += "music/illegal_af.mp3";
     AudioStream::getInstance().init(musicPath, 175.0, 8);
     int32_t streamHandle = AudioStream::getInstance().getStreamHandle();
+#endif // TCPROCKET || MUSIC_AUTOPLAY
 
     // Set up rocket
     sync_device *rocket = sync_create_device("sync");
