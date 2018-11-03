@@ -43,7 +43,7 @@ public:
     Log& operator=(const Log&) = delete;
     Log& operator=(Log&&) = delete;
 
-    void addLog(const char* fmt, ...) IM_PRINTFARGS(2);
+    void addLog(const char* fmt, ...) IM_FMTARGS(2);
 
 private:
     Log();

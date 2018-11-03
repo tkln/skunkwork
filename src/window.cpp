@@ -1,7 +1,7 @@
 #include "window.hpp"
 
 #include <imgui.h>
-#include <imgui_impl_glfw_gl3.h>
+#include <imgui_impl_glfw.h>
 #include <stdio.h>
 
 bool Window::init(int w, int h, const std::string& title)
@@ -120,7 +120,7 @@ void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
     // ImGui should handle any events on top of its windows
     if (ImGui::IsMouseHoveringAnyWindow())
-        ImGui_ImplGlfwGL3_ScrollCallback(window, xoffset, yoffset);
+        ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
     else
         ;
 }
@@ -129,7 +129,7 @@ void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int
 {
     // ImGui should handle any events on top of its windows
     if (ImGui::IsMouseHoveringAnyWindow())
-        ImGui_ImplGlfwGL3_MouseButtonCallback(window, button, action, mods);
+        ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
     else 
         ;
 }
@@ -152,10 +152,10 @@ void Window::keyCallback(GLFWwindow* window, int32_t key, int32_t scancode, int3
             }
         }
     }
-    ImGui_ImplGlfwGL3_KeyCallback(window, key, scancode, action, mods);
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
 
 void Window::charCallback(GLFWwindow* window, unsigned int c)
 {
-    ImGui_ImplGlfwGL3_CharCallback(window, c);
+    ImGui_ImplGlfw_CharCallback(window, c);
 }

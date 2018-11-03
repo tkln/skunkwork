@@ -27,6 +27,7 @@ SOFTWARE.
 #include "log.hpp"
 
 #include <GL/gl3w.h>
+#include <imgui.h>
 
 Log& Log::instance()
 {
@@ -45,7 +46,7 @@ void Log::addLog(const char* fmt, ...)
     int old_size = _buf.size();
     va_list args;
     va_start(args, fmt);
-    _buf.appendv(fmt, args);
+    _buf.appendfv(fmt, args);
     va_end(args);
     for (int new_size = _buf.size(); old_size < new_size; old_size++)
         if (_buf[old_size] == '\n')

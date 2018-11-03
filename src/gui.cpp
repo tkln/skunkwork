@@ -1,7 +1,8 @@
 #include "gui.hpp"
 
-#include <imgui_impl_glfw_gl3.h>
-#include <iostream>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #include "log.hpp"
 
@@ -18,12 +19,18 @@ GUI::GUI() :
 
 void GUI::init(GLFWwindow* window)
 {
-    ImGui_ImplGlfwGL3_Init(window, false);
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForOpenGL(window, false);
+    ImGui_ImplOpenGL3_Init("#version 410");
+    ImGui::StyleColorsDark();
 }
 
 void GUI::destroy()
 {
-    ImGui_ImplGlfwGL3_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }
 
 bool GUI::useSliderTime() const
@@ -41,21 +48,23 @@ void GUI::startFrame(
     const std::vector<std::pair<std::string, const GpuProfiler*>>& timers
 )
 {
-    ImGui_ImplGlfwGL3_NewFrame();
-    ImGuiWindowFlags logWindowFlags = 0;
-    logWindowFlags |= ImGuiWindowFlags_NoTitleBar;
-    logWindowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+    // Start ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
     // Tweak
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiSetCond_Always);
+    ImGui::SetNextWindowCollapsed(true, ImGuiSetCond_Once);
     ImGui::Begin("Tweak");
     ImGui::Checkbox("Slider time", &_useSliderTime);
     ImGui::SliderFloat("Time", &_sliderTime, 0.f, 150.f);
     ImGui::End();
+
     // Log
     ImGui::SetNextWindowSize(ImVec2(LOGW, LOGH), ImGuiSetCond_Always);
     ImGui::SetNextWindowPos(ImVec2(LOGM, windowHeight - LOGH - LOGM), ImGuiSetCond_Always);
-    ImGui::Begin("Log", nullptr, logWindowFlags);
+    ImGui::Begin("Log", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
     ImGui::Text("Frame: %.1f", 1000.f / ImGui::GetIO().Framerate);
     for (auto& t : timers) {
         ImGui::SameLine(); ImGui::Text("%s: %.1f", t.first.c_str(), t.second->getAvg());
@@ -67,4 +76,5 @@ void GUI::startFrame(
 void GUI::endFrame()
 {
     ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
