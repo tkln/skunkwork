@@ -7,14 +7,13 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw_gl3.h>
-#include <iostream>
-#include <sstream>
 #include <sync.h>
 #include <track.h>
 
 #include "audioStream.hpp"
 #include "gpuProfiler.hpp"
 #include "gui.hpp"
+#include "log.hpp"
 #include "quad.hpp"
 #include "scene.hpp"
 #include "shaderProgram.hpp"
@@ -25,10 +24,6 @@
 //#define MUSIC_AUTOPLAY
 // Comment out to load sync from files
 //#define TCPROCKET
-
-using std::cout;
-using std::cerr;
-using std::endl;
 
 //Set up audio callbacks for rocket
 static struct sync_cb audioSync = {
@@ -67,7 +62,8 @@ int main()
 
     // Set up rocket
     sync_device *rocket = sync_create_device("sync");
-    if (!rocket) cout << "[rocket] failed to init" << endl;
+    if (!rocket)
+        ADD_LOG("[rocket] Failed to create device\n");
 
     // Set up scene
     std::string vertPath(RES_DIRECTORY);
@@ -81,7 +77,7 @@ int main()
     // Try connecting to rocket-server
     int rocketConnected = sync_tcp_connect(rocket, "localhost", SYNC_DEFAULT_PORT) == 0;
     if (!rocketConnected)
-        cout << "[rocket] failed to connect" << endl;
+        ADD_LOG("[rocket] Failed to connect to server\n");
 #endif // TCPROCKET
 
     // Init rocket tracks here

@@ -7,8 +7,6 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw_gl3.h>
-#include <iostream>
-#include <sstream>
 
 #include "gpuProfiler.hpp"
 #include "gui.hpp"
@@ -16,10 +14,6 @@
 #include "shaderProgram.hpp"
 #include "timer.hpp"
 #include "window.hpp"
-
-using std::cout;
-using std::cerr;
-using std::endl;
 
 #ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)

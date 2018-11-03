@@ -2,19 +2,17 @@
 
 #include <fstream>
 #include <cstring>
-#include <iostream>
 #include <sstream>
 #include <stack>
 #include <sys/stat.h>
 
-using std::cout;
-using std::endl;
+#include "log.hpp"
 
 // Get last time modified for file
 time_t getMod(const std::string& path) {
     struct stat sb;
     if (stat(path.c_str(), &sb) == -1) {
-        std::cout << "[shader] stat failed for " << path << std::endl;
+        ADD_LOG("[shader] stat failed for '%s'\n", path.c_str());
         return (time_t) - 1;
     }
 
@@ -33,7 +31,7 @@ ShaderProgram::ShaderProgram(const std::string& vertPath, const std::string& fra
     else if (strcmp(vendor, "Intel Inc.") == 0)
         _vendor = Vendor::Intel;
     else {
-        cout << "[shader] Include aware error parsing not supported for '" << vendor << "'" << endl;
+        ADD_LOG("[shader] Include aware error parsing not supported for '%s'\n", vendor);
         _vendor = Vendor::NotSupported;
     }
 
@@ -75,7 +73,7 @@ bool ShaderProgram::reload()
 GLint ShaderProgram::getULoc(const std::string& uniformName, bool debug) const {
     GLint uniformLocation = glGetUniformLocation(_progID, uniformName.c_str());
     if (debug && uniformLocation == -1) {
-        cout << "[shader] " <<  uniformName << " is not a valid shader variable" << endl;
+        ADD_LOG("[shader] '%s' is not a valid shader variable\n", uniformName.c_str());
     }
     return uniformLocation;
 }
@@ -126,8 +124,8 @@ GLuint ShaderProgram::loadProgram(const std::string vertPath, const std::string 
     GLint programSuccess = GL_FALSE;
     glGetProgramiv(progID, GL_LINK_STATUS, &programSuccess);
     if (programSuccess == GL_FALSE) {
-        cout << "[shader] Error linking program " << progID << endl;
-        cout << "Error code: " << programSuccess;
+        ADD_LOG("[shader] Error linking program %u\n", progID);
+        ADD_LOG("[shader] Error code: %d", programSuccess);
         printProgramLog(_progID);
         glDeleteShader(vertexShader);
         glDeleteShader(geometryShader);
@@ -141,7 +139,7 @@ GLuint ShaderProgram::loadProgram(const std::string vertPath, const std::string 
     glDeleteShader(geometryShader);
     glDeleteShader(fragmentShader);
 
-    cout << "[shader] Shader " << progID << " loaded" << endl;
+    ADD_LOG("[shader] Shader %u loaded\n", progID);
 
     return progID;
 }
@@ -158,7 +156,7 @@ GLuint ShaderProgram::loadShader(const std::string& mainPath, GLenum shaderType)
         GLint shaderCompiled = GL_FALSE;
         glGetShaderiv(shaderID, GL_COMPILE_STATUS, &shaderCompiled);
         if (shaderCompiled == GL_FALSE) {
-            cout << "[shader] Unable to compile shader " << shaderID << endl;
+            ADD_LOG("[shader] Unable to compile shader %u\n", shaderID);
             printShaderLog(shaderID);
             shaderID = 0;
         }
@@ -205,7 +203,7 @@ std::string ShaderProgram::parseFromFile(const std::string& filePath, GLenum sha
         // Mark file end for error parsing
         shaderStr += "// File: " + filePath + '\n';
     } else {
-        cout << "Unable to open file " << filePath << endl;
+        ADD_LOG("[shader] Unable to open file '%s'\n", filePath.c_str());
     }
     return shaderStr;
 }
@@ -217,12 +215,10 @@ void ShaderProgram::printProgramLog(GLuint program) const
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
         char* errorLog = new char[maxLength];
         glGetProgramInfoLog(program, maxLength, &maxLength, errorLog);
-        for (auto i = 0; i < maxLength; ++i)
-            cout << errorLog[i];
-        cout << endl;
+        ADD_LOG("%s\n", errorLog);
         delete[] errorLog;
     } else {
-        cout << "ID " << program << " is not a program" << endl;
+        ADD_LOG("[shader] ID %u is not a program\n", program);
     }
 }
 
@@ -236,7 +232,7 @@ void ShaderProgram::printShaderLog(GLuint shader) const
         glGetShaderInfoLog(shader, maxLength, &maxLength, errorLog);
 
         if (_vendor == Vendor::NotSupported) {
-            cout << errorLog << endl;
+            ADD_LOG("%s\n", errorLog);
             delete[] errorLog;
             return;
         }
@@ -259,8 +255,8 @@ void ShaderProgram::printShaderLog(GLuint shader) const
             linePrefix = "ERROR: 0:";
             lineNumCutoff = ':';
         } else {
-            cout << "Unimplemented vendor" << endl;
-            cout << errorLog << endl;
+            ADD_LOG("[shader] Unimplemented vendor parsing\n");
+            ADD_LOG("%s\n", errorLog);
             delete[] errorLog;
             delete[] shaderStr;
             return;
@@ -300,7 +296,7 @@ void ShaderProgram::printShaderLog(GLuint shader) const
 
                 // Print the file if it changed from last error
                 if (lastFile.empty() || lastFile.compare(files.top()) != 0) {
-                    cout << endl << "In file " << files.top() << endl;
+                    ADD_LOG("In file '%s'\n", files.top().c_str());
                     lastFile = files.top();
                 }
 
@@ -308,13 +304,13 @@ void ShaderProgram::printShaderLog(GLuint shader) const
                 errLine.erase(linePrefix.length(), lineNumEnd - linePrefix.length());
                 errLine.insert(linePrefix.length(), std::to_string(lines.top()));
             }
-            cout << errLine << endl;
+            ADD_LOG("%s\n", errLine.c_str());
         }
-        cout << endl;
+        ADD_LOG("\n");
 
         delete[] errorLog;
         delete[] shaderStr;
     } else {
-        cout << "ID " << shader << " is not a shader" << endl;
+        ADD_LOG("[shader] ID %u is not a shader\n", shader);
     }
 }

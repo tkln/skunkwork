@@ -1,10 +1,8 @@
 #include "audioStream.hpp"
 
 #include <bass.h>
-#include <iostream>
 
-using std::cout;
-using std::endl;
+#include "log.hpp"
 
 namespace {
     static int32_t ROW_RATE = 0;
@@ -44,11 +42,11 @@ void AudioStream::init(const std::string& filePath, double bpm, int32_t rpb)
             _streamHandle = BASS_StreamCreateFile(false, filePath.c_str(), 0, 0,
                                                 BASS_STREAM_PRESCAN);
             if (!_streamHandle)
-                cout << "[audio] error opening stream from " << filePath << endl;
+                ADD_LOG("[audio] Error opening stream from '%s'\n", filePath.c_str());
         } else
-            cout << "[audio] failed to init BASS" << endl;
+            ADD_LOG("[audio] Failed to init BASS\n");
     } else
-        cout << "[audio] failed to free stream" << endl;
+        ADD_LOG("[audio] Failed to free stream\n");
 }
 
 void AudioStream::play()
