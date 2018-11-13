@@ -39,9 +39,7 @@ public:
     static Log& instance();
 
     Log(const Log&) = delete;
-    Log(Log&&) = delete;
     Log& operator=(const Log&) = delete;
-    Log& operator=(Log&&) = delete;
 
     void addLog(const char* fmt, ...) IM_FMTARGS(2);
 

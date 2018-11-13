@@ -56,6 +56,18 @@ FrameBuffer::~FrameBuffer()
     glDeleteRenderbuffers(1, &_depthRbo);
 }
 
+FrameBuffer::FrameBuffer(FrameBuffer&& other) :
+    _fbo(other._fbo),
+    _texIDs(other._texIDs),
+    _texParams(other._texParams),
+    _depthRbo(other._depthRbo),
+    _depthFormat(other._depthFormat)
+{
+    other._fbo = 0;
+    other._texIDs.clear();
+    other._depthRbo = 0;
+}
+
 void FrameBuffer::bindWrite()
 {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);

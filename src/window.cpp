@@ -62,6 +62,15 @@ void Window::destroy()
     glfwTerminate();
 }
 
+Window::Window(Window&& other) :
+    _window(other._window),
+    _w(other._w),
+    _h(other._h),
+    _drawGUI(other._drawGUI)
+{
+    other._window = nullptr;
+}
+
 bool Window::open() const
 {
     return !glfwWindowShouldClose(_window);
