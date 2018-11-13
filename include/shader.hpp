@@ -40,6 +40,10 @@ public:
 
     ~Shader();
 
+    Shader(const Shader& other) = delete;
+    Shader(Shader&& other);
+    Shader operator=(const Shader& other);
+
 #ifdef ROCKET
     void bind(double syncRow);
 #else

@@ -65,6 +65,33 @@ Shader::~Shader()
 }
 
 #ifdef ROCKET
+Shader::Shader(Shader&& other) :
+    _vendor(other._vendor),
+    _progID(other._progID),
+    _filePaths(other._filePaths),
+    _fileMods(other._fileMods),
+    _uniforms(other._uniforms),
+    _dynamicUniforms(other._dynamicUniforms),
+    _name(other._name),
+    _rocket(other._rocket),
+    _rocketUniforms(other._rocketUniforms)
+{
+    other._progID = 0;
+}
+#else
+Shader::Shader(Shader&& other) :
+    _vendor(other._vendor),
+    _progID(other._progID),
+    _filePaths(other._filePaths),
+    _fileMods(other._fileMods),
+    _uniforms(other._uniforms),
+    _dynamicUniforms(other._dynamicUniforms)
+{
+    other._progID = 0;
+}
+#endif // ROCKET
+
+#ifdef ROCKET
 void Shader::bind(double syncRow)
 {
     glUseProgram(_progID);

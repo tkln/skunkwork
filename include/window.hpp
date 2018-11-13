@@ -12,6 +12,10 @@ public:
     bool init(int w, int h, const std::string& title);
     void destroy();
 
+    Window(const Window& other) = delete;
+    Window(Window&& other);
+    Window operator=(const Window& other) = delete;
+
     bool open() const;
     GLFWwindow* ptr() const;
     int width() const;

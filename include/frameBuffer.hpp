@@ -13,6 +13,10 @@ public:
                 GLenum depthFormat = 0, GLenum depthAttachment = 0);
     ~FrameBuffer();
 
+    FrameBuffer(const FrameBuffer& other) = delete;
+    FrameBuffer(FrameBuffer&& other);
+    FrameBuffer operator=(const FrameBuffer& other) = delete;
+
     void bindWrite();
     void bindRead(uint32_t texNum, GLenum texUnit, GLint uniforms);
     void genMipmap(uint32_t texNum);

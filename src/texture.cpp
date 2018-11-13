@@ -29,6 +29,13 @@ Texture::~Texture()
     glDeleteTextures(1, &_texID);
 }
 
+Texture::Texture(Texture&& other) :
+    _texID(other._texID),
+    _params(other._params)
+{
+    other._texID = 0;
+}
+
 void Texture::bindWrite(GLenum attach)
 {
     glFramebufferTexture(GL_FRAMEBUFFER, attach, _texID, 0);

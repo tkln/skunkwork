@@ -9,6 +9,10 @@ public:
     Quad();
     ~Quad();
 
+    Quad(const Quad& other) = delete;
+    Quad(Quad&& other);
+    Quad operator=(const Quad& other) = delete;
+
     void render() const;
 
 private:
