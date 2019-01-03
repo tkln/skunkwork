@@ -252,8 +252,7 @@ GLuint Shader::loadProgram(const std::string& vertPath, const std::string& fragP
         std::string name = u.first;
 
 #ifdef ROCKET
-        // TODO: Rocket uniforms
-        if (name[0] == 'r') {
+        if (name.length() > 1 && name[0] == 'r' && isupper(name[1])) {
             // Check type
             UniformType type = u.second.first;
             if (type != UniformType::Float) {
@@ -272,7 +271,7 @@ GLuint Shader::loadProgram(const std::string& vertPath, const std::string& fragP
 #endif // ROCKET
 
         // Skip uniforms not labelled as dynamic
-        if (name[0] != 'd')
+        if (name.length() < 2 || name[0] != 'd' || !isupper(name[1]))
             continue;
 
         // Add existing value if present
@@ -280,7 +279,6 @@ GLuint Shader::loadProgram(const std::string& vertPath, const std::string& fragP
             newDynamics.insert(*existing);
             continue;
         }
-
 
         // Init new uniform
         UniformType type = u.second.first;
