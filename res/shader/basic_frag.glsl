@@ -9,12 +9,19 @@ uniform vec2 dCDir;
 
 out vec4 fragColor;
 
-const int SAMPLES_PER_PIXEL = 10;
-const int MAX_BOUNCES = 2;
+const int SAMPLES_PER_PIXEL = 5;
+const int MAX_BOUNCES = 3;
+const float p_term = 0.75;
 
 // From iq
 float seed; //seed initialized in main
 float rnd() { return fract(sin(seed++)*43758.5453123); }
+
+struct AreaLight {
+    mat4 toWorld;
+    vec2 size;
+    vec3 E;
+};
 
 struct Ray {
     vec3 o;
@@ -40,7 +47,7 @@ struct RDir {
     float pdf;
 };
 
-const int NUM_OBJECTS = 7;
+const int NUM_OBJECTS = 8;
 const Sphere objects[] = Sphere[](
     Sphere(vec3(-0.15, -0.3, 0.1), 0.2),
     Sphere(vec3(0.1, -0.4, -0.2), 0.1),
@@ -49,6 +56,16 @@ const Sphere objects[] = Sphere[](
     Sphere(vec3(0, 1000.5, 0), 1000),
     Sphere(vec3(-1000.5, 0, 0), 1000),
     Sphere(vec3(1000.5, 0, 0), 1000)
+);
+
+const int NUM_LIGHTS = 1;
+const AreaLight lights[] = AreaLight[](
+    AreaLight(mat4(1,   0, 0, 0,
+                   0,   1, 0, 0,
+                   0,   0, 1, 0,
+                   0, 0.5, 0, 1),
+              vec2(0.4),
+              vec3(3))
 );
 
 mat3 formBasis(vec3 n)
@@ -128,7 +145,7 @@ vec3 getViewRay(vec2 px, float fov)
 Hit traceRay(Ray r)
 {
     int object = -1;
-    float t = 100;
+    float t = r.t;
     for (int i = 0; i < NUM_OBJECTS; ++i) {
         Sphere s = objects[i];
         float nt = intersect(r, s);
@@ -151,11 +168,8 @@ Hit traceRay(Ray r)
                 break;
             case 2:
             case 3:
-                color = vec3(180) / vec3(255);
-                break;
             case 4:
-                if (length(position.xz) < 0.2)
-                    emission = vec3(5);
+                color = vec3(180) / vec3(255);
                 break;
             case 5:
                 color = vec3(180, 0, 0) / vec3(255);
@@ -180,15 +194,50 @@ vec3 tracePath(vec2 px)
         Ray r = Ray(dCPos, getViewRay(sample_px, 90), 100);
         pR(r.d.yz, dCDir.x);
         pR(r.d.xz, dCDir.y);
-        for (int i = 0; i < MAX_BOUNCES; ++i) {
+        int bounces = 0;
+        bool terminate = false;
+        while (!terminate) {
             Hit h = traceRay(r);
-            if (h.hit) {
+            if (h.hit && dot(h.normal, r.d) < 0) {
+                // Add material emission
                 ei += h.emission * throughput;
+                // Sample lights
                 r.o = h.position + h.normal * 0.001;
+                for (int i = 0; i < NUM_LIGHTS; ++i) {
+                    AreaLight light = lights[i];
+                    float pdf = 1 / (4 * light.size.x * light.size.y);
+                    mat4 S = mat4(light.size.x,            0, 0, 0,
+                                            0, light.size.y, 0, 0,
+                                            0,            0, 1, 0,
+                                            0,            0, 0, 1);
+                    mat4 M = light.toWorld * S;
+                    vec3 p = (M * vec4(vec2(rnd(), rnd()) * 2 - 1, 0, 1)).xyz;
+
+                    vec3 sr = p - r.o;
+                    r.d = normalize(sr);
+                    r.t = length(sr);
+                    Hit sh = traceRay(r);
+                    if (!sh.hit) {
+                        sr = sh.position - r.o;
+                        float r2 = dot(sr, sr);
+                        vec3 lN = vec3(0, -1, 0); // TODO: generic
+                        float cosTheta = max(dot(h.normal, r.d), 0);
+                        float lcosTheta = max(dot(lN, -r.d), 0);
+                        vec3 le = lights[i].E;
+                        ei += throughput * h.diffuse * le * cosTheta * lcosTheta / (r2 * pdf);
+                    }
+                }
+                // Russian roulette
+                if (bounces >= MAX_BOUNCES) {
+                    terminate = rnd() > 0.7;
+                }
+                // Get direction for next reflection ray
                 RDir rd = sampleReflection(h.normal);
                 r.d = rd.d;
                 float cosTheta = max(dot(h.normal, rd.d), 0);
                 throughput *= h.diffuse * cosTheta / rd.pdf;
+                if (bounces >= MAX_BOUNCES) throughput /= p_term;
+                bounces++;
             } else
                 break;
         }
