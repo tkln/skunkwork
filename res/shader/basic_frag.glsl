@@ -6,10 +6,11 @@
 uniform vec3 dColor;
 uniform vec3 dCPos;
 uniform vec2 dCDir;
+uniform vec3 dLColor;
 
 out vec4 fragColor;
 
-const int SAMPLES_PER_PIXEL = 5;
+const int SAMPLES_PER_PIXEL = 10;
 const int MAX_BOUNCES = 3;
 const float p_term = 0.75;
 
@@ -65,7 +66,7 @@ const AreaLight lights[] = AreaLight[](
                    0,   0, 1, 0,
                    0, 0.5, 0, 1),
               vec2(0.1),
-              vec3(30))
+              vec3(0.85, 0.8, 0.4) * vec3(30))
 );
 
 mat3 formBasis(vec3 n)
@@ -163,18 +164,19 @@ Hit traceRay(Ray r)
         normal = normalize(r.o + r.d * t - objects[object].center);
         switch (object) {
             case 0:
-            case 1:
                 color = vec3(80) / vec3(255);
+                break;
+            case 1:
+                color = vec3(0);
                 break;
             case 2:
             case 3:
                 color = vec3(180) / vec3(255);
                 break;
             case 4:
+                color = vec3(180) / vec3(255);
                 if (all(lessThan(abs(position.xz), lights[0].size)))
-                    emission = lights[0].E;
-                else
-                    color = vec3(180) / vec3(255);
+                    emission = vec3(1);
                 break;
             case 5:
                 color = vec3(180, 0, 0) / vec3(255);
@@ -203,47 +205,54 @@ vec3 tracePath(vec2 px)
         bool terminate = false;
         while (!terminate) {
             Hit h = traceRay(r);
+            // Cut box
+            if (h.position.z < -0.5)
+                break;
             if (h.hit && dot(h.normal, r.d) < 0) {
-                // Add material emission
-                if (bounces == 0)
-                    ei += h.emission * throughput;
-                // Sample lights
                 r.o = h.position + h.normal * 0.001;
-                for (int i = 0; i < NUM_LIGHTS; ++i) {
-                    AreaLight light = lights[i];
-                    float pdf = 1 / (4 * light.size.x * light.size.y);
-                    mat4 S = mat4(light.size.x,            0, 0, 0,
-                                            0, light.size.y, 0, 0,
-                                            0,            0, 1, 0,
-                                            0,            0, 0, 1);
-                    mat4 M = light.toWorld * S;
-                    vec3 p = (M * vec4(vec2(rnd(), rnd()) * 2 - 1, 0, 1)).xyz;
+                if (h.diffuse == vec3(0)) {
+                    r.d = reflect(r.d, h.normal);
+                } else {
+                    // Add material emission
+                    if (bounces == 0)
+                        ei += h.emission;
+                    // Sample lights
+                    for (int i = 0; i < NUM_LIGHTS; ++i) {
+                        AreaLight light = lights[i];
+                        float pdf = 1 / (4 * light.size.x * light.size.y);
+                        mat4 S = mat4(light.size.x,            0, 0, 0,
+                                                0, light.size.y, 0, 0,
+                                                0,            0, 1, 0,
+                                                0,            0, 0, 1);
+                        mat4 M = light.toWorld * S;
+                        vec3 p = (M * vec4(vec2(rnd(), rnd()) * 2 - 1, 0, 1)).xyz;
 
-                    vec3 sr = p - r.o;
-                    r.d = normalize(sr);
-                    r.t = length(sr);
-                    Hit sh = traceRay(r);
-                    if (!sh.hit) {
-                        sr = sh.position - r.o;
-                        float r2 = dot(sr, sr);
-                        vec3 lN = vec3(0, -1, 0); // TODO: generic
-                        float cosTheta = max(dot(h.normal, r.d), 0);
-                        float lcosTheta = max(dot(lN, -r.d), 0);
-                        vec3 le = lights[i].E;
-                        ei += throughput * h.diffuse * le * cosTheta * lcosTheta / (r2 * pdf);
+                        vec3 sr = p - r.o;
+                        r.d = normalize(sr);
+                        r.t = length(sr);
+                        Hit sh = traceRay(r);
+                        if (!sh.hit) {
+                            sr = sh.position - r.o;
+                            float r2 = dot(sr, sr);
+                            vec3 lN = vec3(0, -1, 0); // TODO: generic
+                            float cosTheta = max(dot(h.normal, r.d), 0);
+                            float lcosTheta = max(dot(lN, -r.d), 0);
+                            vec3 le = lights[i].E ;
+                            ei += throughput * h.diffuse * le * cosTheta * lcosTheta / (r2 * pdf);
+                        }
                     }
+                    // Russian roulette
+                    if (bounces >= MAX_BOUNCES) {
+                        terminate = rnd() > 0.7;
+                    }
+                    // Get direction for next reflection ray
+                    RDir rd = sampleReflection(h.normal);
+                    r.d = rd.d;
+                    float cosTheta = max(dot(h.normal, rd.d), 0);
+                    throughput *= h.diffuse * cosTheta / rd.pdf;
+                    if (bounces >= MAX_BOUNCES) throughput /= p_term;
+                    bounces++;
                 }
-                // Russian roulette
-                if (bounces >= MAX_BOUNCES) {
-                    terminate = rnd() > 0.7;
-                }
-                // Get direction for next reflection ray
-                RDir rd = sampleReflection(h.normal);
-                r.d = rd.d;
-                float cosTheta = max(dot(h.normal, rd.d), 0);
-                throughput *= h.diffuse * cosTheta / rd.pdf;
-                if (bounces >= MAX_BOUNCES) throughput /= p_term;
-                bounces++;
             } else
                 break;
         }
@@ -253,6 +262,10 @@ vec3 tracePath(vec2 px)
 
 void main()
 {
+    if (abs(gl_FragCoord.y / uRes.y - 0.5) > 0.35) {
+        fragColor = vec4(0);
+        return;
+    }
     seed = uTime + gl_FragCoord.y * gl_FragCoord.x / uRes.x + gl_FragCoord.y / uRes.y;
     fragColor = vec4(pow(tracePath(gl_FragCoord.xy), vec3(1 / 2.22)), 1);
     //fragColor = vec4(tracePath(gl_FragCoord.xy), 1);
