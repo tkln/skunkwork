@@ -64,8 +64,8 @@ const AreaLight lights[] = AreaLight[](
                    0,   1, 0, 0,
                    0,   0, 1, 0,
                    0, 0.5, 0, 1),
-              vec2(0.4),
-              vec3(3))
+              vec2(0.1),
+              vec3(30))
 );
 
 mat3 formBasis(vec3 n)
@@ -168,8 +168,13 @@ Hit traceRay(Ray r)
                 break;
             case 2:
             case 3:
-            case 4:
                 color = vec3(180) / vec3(255);
+                break;
+            case 4:
+                if (all(lessThan(abs(position.xz), lights[0].size)))
+                    emission = lights[0].E;
+                else
+                    color = vec3(180) / vec3(255);
                 break;
             case 5:
                 color = vec3(180, 0, 0) / vec3(255);
@@ -200,7 +205,8 @@ vec3 tracePath(vec2 px)
             Hit h = traceRay(r);
             if (h.hit && dot(h.normal, r.d) < 0) {
                 // Add material emission
-                ei += h.emission * throughput;
+                if (bounces == 0)
+                    ei += h.emission * throughput;
                 // Sample lights
                 r.o = h.position + h.normal * 0.001;
                 for (int i = 0; i < NUM_LIGHTS; ++i) {
@@ -248,6 +254,7 @@ vec3 tracePath(vec2 px)
 void main()
 {
     seed = uTime + gl_FragCoord.y * gl_FragCoord.x / uRes.x + gl_FragCoord.y / uRes.y;
-    fragColor = vec4(tracePath(gl_FragCoord.xy), 1);
+    fragColor = vec4(pow(tracePath(gl_FragCoord.xy), vec3(1 / 2.22)), 1);
+    //fragColor = vec4(tracePath(gl_FragCoord.xy), 1);
     if (uTime < 0) fragColor = vec4(0);
 }
