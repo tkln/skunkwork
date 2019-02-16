@@ -1,5 +1,7 @@
 # skunkwork
-A lightweight framework for fooling around with GLSL-shaders, mainly designed for demo work. Current features:
+![screenshot](screenshot.png)
+
+A lightweight framework for fooling around with GLSL-shaders, mainly designed for demos. Current features:
   * Includes in glsl
     * nesting supported
     * error lines parsed per file on nvidia and intel drivers
