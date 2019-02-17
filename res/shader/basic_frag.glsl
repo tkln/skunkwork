@@ -1,18 +1,26 @@
 #version 410
 
 #include "uniforms.glsl"
-#include "hg_sdf.glsl"
 
 uniform vec3 dColor;
 uniform vec3 dCPos;
 uniform vec2 dCDir;
 uniform vec3 dLColor;
+uniform float dRoughness;
 
 out vec4 fragColor;
 
-const int SAMPLES_PER_PIXEL = 10;
-const int MAX_BOUNCES = 3;
-const float p_term = 0.75;
+const int SAMPLES_PER_PIXEL = 100;
+const int MAX_BOUNCES = 5;
+const float EPSILON = 0.01;
+
+// From hg_sdf
+#define PI 3.14159265
+#define saturate(x) clamp(x, 0, 1)
+#define square(x) x * x
+void pR(inout vec2 p, float a) {
+    p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
+}
 
 // From iq
 float seed; //seed initialized in main
@@ -48,25 +56,35 @@ struct RDir {
     float pdf;
 };
 
-const int NUM_OBJECTS = 8;
+const int NUM_OBJECTS = 7;
 const Sphere objects[] = Sphere[](
-    Sphere(vec3(-0.15, -0.3, 0.1), 0.2),
-    Sphere(vec3(0.1, -0.4, -0.2), 0.1),
-    Sphere(vec3(0, -1000.5, 0), 1000),
-    Sphere(vec3(0, 0, 1000.5), 1000),
-    Sphere(vec3(0, 1000.5, 0), 1000),
-    Sphere(vec3(-1000.5, 0, 0), 1000),
-    Sphere(vec3(1000.5, 0, 0), 1000)
+    Sphere(vec3(-1.5, -3,.1), 2),
+    Sphere(vec3(1, -4, -2), 1),
+    Sphere(vec3(0, -10005, 0), 10000),
+    Sphere(vec3(0, 0, 10005), 10000),
+    Sphere(vec3(0, 10005, 0), 10000),
+    Sphere(vec3(-10005, 0, 0), 10000),
+    Sphere(vec3(10005, 0, 0), 10000)
 );
+const vec3 COLORS[] = vec3[](
+    vec3(80) / vec3(255),
+    vec3(180) / vec3(255),
+    vec3(180) / vec3(255),
+    vec3(180) / vec3(255),
+    vec3(180) / vec3(255),
+    vec3(180,0,0) / vec3(255),
+    vec3(0,180,0) / vec3(255)
+);
+
 
 const int NUM_LIGHTS = 1;
 const AreaLight lights[] = AreaLight[](
-    AreaLight(mat4(1,   0, 0, 0,
-                   0,   1, 0, 0,
-                   0,   0, 1, 0,
-                   0, 0.5, 0, 1),
-              vec2(0.1),
-              vec3(0.85, 0.8, 0.4) * vec3(30))
+    AreaLight(mat4(1, 0, 0, 0,
+                   0, 1, 0, 0,
+                   0, 0, 1, 0,
+                   0, 5, 0, 1),
+              vec2(2),
+              vec3(0.85, 0.8, 0.4) * vec3(15))
 );
 
 mat3 formBasis(vec3 n)
@@ -94,7 +112,22 @@ mat3 formBasis(vec3 n)
     return m;
 }
 
-RDir sampleReflection(vec3 n) {
+// TODO: fix me to match the naive sampling visually
+vec3 uniformSampleHemisphere()
+{
+    vec2 u = vec2(rnd(), rnd());
+    float z = u.x;
+    float r = sqrt(saturate(1 - z * z));
+    float phi = 2 * PI * u.y;
+    return vec3(r * cos(phi), r * sin(phi), z);
+}
+
+float uniformHemispherePDF()
+{
+    return 1 / (2 * PI);
+}
+
+RDir sampleDiffuseReflection(vec3 n) {
     // Get random reflection direction
     vec2 p;
     float p_sqr;
@@ -136,13 +169,6 @@ float intersect(Ray r, Sphere s)
     return t0;
 }
 
-vec3 getViewRay(vec2 px, float fov)
-{
-    vec2 xy = px.xy - uRes * 0.5;
-    float z = uRes.y / tan(radians(fov * 0.5));
-    return normalize(vec3(xy, z));
-}
-
 Hit traceRay(Ray r)
 {
     int object = -1;
@@ -157,104 +183,63 @@ Hit traceRay(Ray r)
     }
     vec3 position = vec3(0);
     vec3 normal = vec3(0);
-    vec3 color = vec3(0);
-    vec3 emission = vec3(0);
+    vec3 color = vec3(1,0,1);
+    vec3 emission = vec3(1,0,1);
     if (object >= 0) {
         position = r.o + r.d * t;
-        normal = normalize(r.o + r.d * t - objects[object].center);
-        switch (object) {
-            case 0:
-                color = vec3(80) / vec3(255);
-                break;
-            case 1:
-                color = vec3(0);
-                break;
-            case 2:
-            case 3:
-                color = vec3(180) / vec3(255);
-                break;
-            case 4:
-                color = vec3(180) / vec3(255);
-                if (all(lessThan(abs(position.xz), lights[0].size)))
-                    emission = vec3(1);
-                break;
-            case 5:
-                color = vec3(180, 0, 0) / vec3(255);
-                break;
-            case 6:
-                color = vec3(0, 180, 0) / vec3(255);
-                break;
-            default:
-                emission = vec3(1,1,0);
-                break;
-        }
+        normal = normalize(position - objects[object].center);
+        color = COLORS[object];
+        emission = vec3(0);
+        if (object == 4 && all(lessThan(abs(position.xz), lights[0].size)))
+            emission = lights[0].E;
     }
     return Hit(object >= 0, position, normal, color / PI, emission);
+}
+
+vec3 getViewRay(vec2 px, float hfov)
+{
+    vec2 xy = px.xy - uRes * 0.5;
+    float z = uRes.y / tan(radians(hfov));
+    vec3 d = normalize(vec3(xy, z));
+    pR(d.yz, dCDir.y);
+    pR(d.xz, dCDir.x);
+    return d;
 }
 
 vec3 tracePath(vec2 px)
 {
     vec3 ei = vec3(0);
     for (int j = 0; j < SAMPLES_PER_PIXEL; ++j) {
-        vec3 throughput = vec3(1);
+        // Generate ray
         vec2 sample_px = gl_FragCoord.xy + vec2(rnd(), rnd());
-        Ray r = Ray(dCPos, getViewRay(sample_px, 90), 100);
-        pR(r.d.yz, dCDir.x);
-        pR(r.d.xz, dCDir.y);
-        int bounces = 0;
-        bool terminate = false;
-        while (!terminate) {
-            Hit h = traceRay(r);
-            // Cut box
-            if (h.position.z < -0.5)
-                break;
-            if (h.hit && dot(h.normal, r.d) < 0) {
-                r.o = h.position + h.normal * 0.001;
-                if (h.diffuse == vec3(0)) {
-                    r.d = reflect(r.d, h.normal);
-                } else {
-                    // Add material emission
-                    if (bounces == 0)
-                        ei += h.emission;
-                    // Sample lights
-                    for (int i = 0; i < NUM_LIGHTS; ++i) {
-                        AreaLight light = lights[i];
-                        float pdf = 1 / (4 * light.size.x * light.size.y);
-                        mat4 S = mat4(light.size.x,            0, 0, 0,
-                                                0, light.size.y, 0, 0,
-                                                0,            0, 1, 0,
-                                                0,            0, 0, 1);
-                        mat4 M = light.toWorld * S;
-                        vec3 p = (M * vec4(vec2(rnd(), rnd()) * 2 - 1, 0, 1)).xyz;
+        Ray r = Ray(dCPos, getViewRay(sample_px, 45), 100);
 
-                        vec3 sr = p - r.o;
-                        r.d = normalize(sr);
-                        r.t = length(sr);
-                        Hit sh = traceRay(r);
-                        if (!sh.hit) {
-                            sr = sh.position - r.o;
-                            float r2 = dot(sr, sr);
-                            vec3 lN = vec3(0, -1, 0); // TODO: generic
-                            float cosTheta = max(dot(h.normal, r.d), 0);
-                            float lcosTheta = max(dot(lN, -r.d), 0);
-                            vec3 le = lights[i].E ;
-                            ei += throughput * h.diffuse * le * cosTheta * lcosTheta / (r2 * pdf);
-                        }
-                    }
-                    // Russian roulette
-                    if (bounces >= MAX_BOUNCES) {
-                        terminate = rnd() > 0.7;
-                    }
-                    // Get direction for next reflection ray
-                    RDir rd = sampleReflection(h.normal);
-                    r.d = rd.d;
-                    float cosTheta = max(dot(h.normal, rd.d), 0);
-                    throughput *= h.diffuse * cosTheta / rd.pdf;
-                    if (bounces >= MAX_BOUNCES) throughput /= p_term;
-                    bounces++;
-                }
-            } else
+
+        vec3 throughput = vec3(1);
+        for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce) {
+            Hit h = traceRay(r);
+            // Cut ray on miss, backward hit or being outside the box
+            if (!h.hit || dot(h.normal, r.d) > 0 || h.position.z < -5)
                 break;
+
+            r.o = h.position + h.normal * 0.01;
+            // Add material emission
+            ei += throughput * h.emission;
+
+            // Get direction for next reflection ray
+            RDir rd = sampleDiffuseReflection(h.normal);
+            r.d = rd.d;
+            float cosTheta = max(dot(h.normal, rd.d), 0);
+            throughput *= h.diffuse * cosTheta / rd.pdf;
+
+            /*
+            // TODO: fix me to match the naive sampling visually
+            // Get direction for next reflection ray
+            r.d = normalize(formBasis(h.normal) * uniformSampleHemisphere());
+            float cosTheta = saturate(dot(h.normal, r.d));
+            float pdf = uniformHemispherePDF();
+            throughput *= h.diffuse * cosTheta / pdf;
+            */
         }
     }
     return ei / SAMPLES_PER_PIXEL;
@@ -262,12 +247,15 @@ vec3 tracePath(vec2 px)
 
 void main()
 {
-    if (abs(gl_FragCoord.y / uRes.y - 0.5) > 0.35) {
+    // Cinema bars
+    if (abs(gl_FragCoord.y / uRes.y - 0.5) > 0.375) {
         fragColor = vec4(0);
         return;
     }
+
+    // Reseed by iq
     seed = uTime + gl_FragCoord.y * gl_FragCoord.x / uRes.x + gl_FragCoord.y / uRes.y;
-    fragColor = vec4(pow(tracePath(gl_FragCoord.xy), vec3(1 / 2.22)), 1);
-    //fragColor = vec4(tracePath(gl_FragCoord.xy), 1);
-    if (uTime < 0) fragColor = vec4(0);
+
+    vec3 color = tracePath(gl_FragCoord.xy);
+    fragColor = vec4(pow(color, vec3(0.4545)), 1); // Quick and dirty gc
 }
