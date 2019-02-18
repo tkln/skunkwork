@@ -32,6 +32,13 @@ struct AreaLight {
     vec3 E;
 };
 
+struct Material {
+    vec3 albedo;
+    float roughness;
+    float metalness;
+    vec3 emission;
+};
+
 struct Ray {
     vec3 o;
     vec3 d;
@@ -42,8 +49,7 @@ struct Hit {
     bool hit;
     vec3 position;
     vec3 normal;
-    vec3 diffuse;
-    vec3 emission;
+    Material material;
 };
 
 struct Sphere {
@@ -169,6 +175,22 @@ float intersect(Ray r, Sphere s)
     return t0;
 }
 
+Material evalMaterial(vec3 p, int i)
+{
+    Material m;
+    m.albedo = vec3(1,0,1);
+    m.roughness = 1;
+    m.metalness = 0;
+    m.emission = vec3(1,0,1);
+    if (i >= 0) {
+        m.albedo = COLORS[i] / PI;
+        m.emission = vec3(0);
+        if (i == 4 && all(lessThan(abs(p.xz), lights[0].size)))
+            m.emission = lights[0].E;
+    }
+    return m;
+}
+
 Hit traceRay(Ray r)
 {
     int object = -1;
@@ -183,17 +205,11 @@ Hit traceRay(Ray r)
     }
     vec3 position = vec3(0);
     vec3 normal = vec3(0);
-    vec3 color = vec3(1,0,1);
-    vec3 emission = vec3(1,0,1);
     if (object >= 0) {
-        position = r.o + r.d * t;
+        position = r.o + t * r.d;
         normal = normalize(position - objects[object].center);
-        color = COLORS[object];
-        emission = vec3(0);
-        if (object == 4 && all(lessThan(abs(position.xz), lights[0].size)))
-            emission = lights[0].E;
     }
-    return Hit(object >= 0, position, normal, color / PI, emission);
+    return Hit(object >= 0, position, normal, evalMaterial(position, object));
 }
 
 vec3 getViewRay(vec2 px, float hfov)
@@ -224,13 +240,13 @@ vec3 tracePath(vec2 px)
 
             r.o = h.position + h.normal * 0.01;
             // Add material emission
-            ei += throughput * h.emission;
+            ei += throughput * h.material.emission;
 
             // Get direction for next reflection ray
             RDir rd = sampleDiffuseReflection(h.normal);
             r.d = rd.d;
             float cosTheta = max(dot(h.normal, rd.d), 0);
-            throughput *= h.diffuse * cosTheta / rd.pdf;
+            throughput *= h.material.albedo * cosTheta / rd.pdf;
 
             /*
             // TODO: fix me to match the naive sampling visually
