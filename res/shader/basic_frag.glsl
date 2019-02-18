@@ -7,11 +7,12 @@ uniform vec3 dCPos;
 uniform vec2 dCDir;
 uniform vec3 dLColor;
 uniform float dRoughness;
+uniform float dMetalness;
 
 out vec4 fragColor;
 
-const int SAMPLES_PER_PIXEL = 100;
-const int MAX_BOUNCES = 5;
+const int SAMPLES_PER_PIXEL = 20;
+const int MAX_BOUNCES = 3;
 const float EPSILON = 0.01;
 
 // From hg_sdf
@@ -25,6 +26,10 @@ void pR(inout vec2 p, float a) {
 // From iq
 float seed; //seed initialized in main
 float rnd() { return fract(sin(seed++)*43758.5453123); }
+
+// Conversions from sRGB to linear space
+#define stol1(x) (x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4))
+#define stol3(x, y, z) vec3(stol1(x), stol1(y), stol1(z))
 
 struct AreaLight {
     mat4 toWorld;
@@ -73,8 +78,8 @@ const Sphere objects[] = Sphere[](
     Sphere(vec3(10005, 0, 0), 10000)
 );
 const vec3 COLORS[] = vec3[](
-    vec3(80) / vec3(255),
-    vec3(180) / vec3(255),
+    stol3(0, 0, 1),
+    stol3(1, 0.863, 0.616),
     vec3(180) / vec3(255),
     vec3(180) / vec3(255),
     vec3(180) / vec3(255),
@@ -89,8 +94,8 @@ const AreaLight lights[] = AreaLight[](
                    0, 1, 0, 0,
                    0, 0, 1, 0,
                    0, 5, 0, 1),
-              vec2(2),
-              vec3(0.85, 0.8, 0.4) * vec3(15))
+              vec2(1),
+              vec3(0.85, 0.8, 0.4) * vec3(30))
 );
 
 mat3 formBasis(vec3 n)
@@ -118,22 +123,8 @@ mat3 formBasis(vec3 n)
     return m;
 }
 
-// TODO: fix me to match the naive sampling visually
-vec3 uniformSampleHemisphere()
-{
-    vec2 u = vec2(rnd(), rnd());
-    float z = u.x;
-    float r = sqrt(saturate(1 - z * z));
-    float phi = 2 * PI * u.y;
-    return vec3(r * cos(phi), r * sin(phi), z);
-}
-
-float uniformHemispherePDF()
-{
-    return 1 / (2 * PI);
-}
-
-RDir sampleDiffuseReflection(vec3 n) {
+// Sampling
+vec3 cosineSampleHemisphere() {
     // Get random reflection direction
     vec2 p;
     float p_sqr;
@@ -141,14 +132,64 @@ RDir sampleDiffuseReflection(vec3 n) {
         p = vec2(rnd(), rnd()) * 2 - 1;
         p_sqr = dot(p, p);
     } while (p_sqr > 1);
-    RDir rd;
-    rd.d = vec3(p.x, p.y, sqrt(1 - p_sqr));
-
-    // Rotate to normal direction and scale
-    rd.d = normalize(formBasis(n) * rd.d);
-    rd.pdf = dot(rd.d, n) / PI; // this Seems Right^tm
+    vec3 rd = vec3(p.x, p.y, sqrt(1 - p_sqr));
     return rd;
 }
+
+// Shading
+vec3 lambertBRFD(vec3 albedo)
+{
+    return albedo / PI;
+}
+
+float ggx(float NoH, float rough)
+{
+    float a2 = rough * rough;
+    a2 *= a2;
+    float denom = NoH * NoH * (a2 - 1) + 1;
+    return a2 / (PI * denom * denom);
+}
+
+vec3 schlickFresnel(float VoH, vec3 f0)
+{
+    return f0 + (1 - f0) * pow(1 - VoH, 5);
+}
+
+float schlick_ggx(float NoL, float NoV, float rough)
+{
+    float k = (rough + 1);
+    k *= k * 0.125;
+    float gl = NoL / (NoL * (1 - k) + k);
+    float gv = NoV / (NoV * (1 - k) + k);
+    return gl * gv;
+}
+
+vec3 cookTorranceBRDF(float NoL, float NoV, float NoH, float VoH, vec3 F, float rough)
+{
+    vec3 DFG = ggx(NoH, rough) * F * schlick_ggx(NoL, NoV, rough);
+    float denom = 4 * NoL * NoV + 0.0001;
+    return DFG / denom;
+}
+
+vec3 evalBRDF(vec3 n, vec3 v, vec3 l, Material m)
+{
+    // Common dot products
+    float NoV = saturate(dot(n, v));
+    float NoL = saturate(dot(n, l));
+    vec3 h = normalize(v + l);
+    float NoH = saturate(dot(n, h));
+    float VoH = saturate(dot(v, h));
+
+    // Use standard approximation of default fresnel
+    vec3 f0 = mix(vec3(0.04), m.albedo, m.metalness);
+    vec3 F = schlickFresnel(VoH, f0);
+
+    // Diffuse amount
+    vec3 Kd = (1 - F) * (1 - m.metalness);
+
+    return (Kd * lambertBRFD(m.albedo) + cookTorranceBRDF(NoL, NoV, NoH, VoH, F, m.roughness)) * NoL;
+}
+
 
 float intersect(Ray r, Sphere s)
 {
@@ -183,10 +224,17 @@ Material evalMaterial(vec3 p, int i)
     m.metalness = 0;
     m.emission = vec3(1,0,1);
     if (i >= 0) {
-        m.albedo = COLORS[i] / PI;
+        m.albedo = COLORS[i];
         m.emission = vec3(0);
-        if (i == 4 && all(lessThan(abs(p.xz), lights[0].size)))
+        if (i == 0) {
+            m.roughness = 0.3;
+            m.metalness = 0;
+        } else if (i == 1) {
+            m.roughness = 0.4;
+            m.metalness = 1;
+        } else if (i == 4 && all(lessThan(abs(p.xz), lights[0].size))) {
             m.emission = lights[0].E;
+        }
     }
     return m;
 }
@@ -233,29 +281,55 @@ vec3 tracePath(vec2 px)
 
         vec3 throughput = vec3(1);
         for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce) {
-            Hit h = traceRay(r);
+            Hit hit = traceRay(r);
             // Cut ray on miss, backward hit or being outside the box
-            if (!h.hit || dot(h.normal, r.d) > 0 || h.position.z < -5)
+            if (!hit.hit || dot(hit.normal, r.d) > 0 || hit.position.z < -5)
                 break;
 
-            r.o = h.position + h.normal * 0.01;
+            // Collect common info
+            Material m = hit.material;
+            vec3 n = hit.normal;
+            vec3 p = hit.position + hit.normal * 0.01;
+
             // Add material emission
-            ei += throughput * h.material.emission;
+            if (bounce == 0)
+                ei += throughput * m.emission;
+
+            // Sample lights
+            for (int i = 0; i < NUM_LIGHTS; ++i) {
+                AreaLight light = lights[i];
+                float pdf = 1 / (4 * light.size.x * light.size.y);
+                mat4 S = mat4(light.size.x,            0, 0, 0,
+                                        0, light.size.y, 0, 0,
+                                        0,            0, 1, 0,
+                                        0,            0, 0, 1);
+                mat4 M = light.toWorld * S;
+                vec3 pL = (M * vec4(vec2(rnd(), rnd()) * 2 - 1, 0, 1)).xyz;
+
+                vec3 toLight = pL - p;
+                Ray sr;
+                sr.o = p;
+                sr.d = normalize(toLight);
+                sr.t = length(toLight) - EPSILON;
+                Hit sh = traceRay(sr);
+                if (!sh.hit) {
+                    float r2 = dot(toLight, toLight);
+                    vec3 lN = vec3(0, -1, 0); // TODO: generic
+                    vec3 le = lights[i].E;
+                    ei += throughput * evalBRDF(hit.normal, -r.d, sr.d, m) * le / (r2 * pdf);
+                }
+            }
 
             // Get direction for next reflection ray
-            RDir rd = sampleDiffuseReflection(h.normal);
-            r.d = rd.d;
-            float cosTheta = max(dot(h.normal, rd.d), 0);
-            throughput *= h.material.albedo * cosTheta / rd.pdf;
-
-            /*
-            // TODO: fix me to match the naive sampling visually
-            // Get direction for next reflection ray
-            r.d = normalize(formBasis(h.normal) * uniformSampleHemisphere());
-            float cosTheta = saturate(dot(h.normal, r.d));
-            float pdf = uniformHemispherePDF();
-            throughput *= h.diffuse * cosTheta / pdf;
-            */
+            vec3 rd = cosineSampleHemisphere();
+            // Rotate to normal direction and scale
+            rd = normalize(formBasis(n) * rd);
+            // PDF for outgoing direction
+            float pdf = dot(n, rd) / PI; // this Seems Right^tm and could be simplified to just * PI in throughput
+            // TODO: Multiple importance sampling on diffuse and specular?
+            throughput *= evalBRDF(hit.normal, -r.d, rd, m) / pdf;
+            r.d = rd;
+            r.o = p;
         }
     }
     return ei / SAMPLES_PER_PIXEL;
