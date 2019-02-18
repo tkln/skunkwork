@@ -11,7 +11,7 @@ uniform float dMetalness;
 
 out vec4 fragColor;
 
-const int SAMPLES_PER_PIXEL = 10;
+const int SAMPLES_PER_PIXEL = 50;
 const int BOUNCES = 3;
 const float P_TERMINATE = 0.75;
 const float EPSILON = 0.01;
@@ -25,15 +25,15 @@ const float EPSILON = 0.01;
 #define ltos1(x) (x <= 0.0031308 ? x * 12.92 : 1.055 * pow(x, 0.4166667) - 0.055)
 #define ltos3(x, y, z) vec3(ltos1(x), ltos1(y), ltos1(z))
 
-// From hg_sdf
-void pR(inout vec2 p, float a) {
-    p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
-}
-
 // From iq
 float seed; //seed initialized in main
 float rnd() { return fract(sin(seed++)*43758.5453123); }
 // TODO: Low-discrepancy sampling, more uniform prng?
+
+// From hg_sdf
+void pR(inout vec2 p, float a) {
+    p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
+}
 
 // --STRUCTS-------------------------------------------------------------------
 struct AreaLight {
@@ -69,7 +69,7 @@ struct RDir {
 
 // --SCENE---------------------------------------------------------------------
 const int NUM_LIGHTS = 1;
-const AreaLight lights[] = AreaLight[](
+const AreaLight LIGHTS[] = AreaLight[](
     AreaLight(mat4(1, 0, 0, 0,
                    0, 1, 0, 0,
                    0, 0, 1, 0,
@@ -95,17 +95,17 @@ const vec3 COLORS[] = vec3[](
     vec3(180) / vec3(255),
     vec3(180) / vec3(255),
     vec3(180) / vec3(255),
-    vec3(180,0,0) / vec3(255),
-    vec3(0,180,0) / vec3(255)
+    vec3(180, 0, 0) / vec3(255),
+    vec3(0, 180, 0) / vec3(255)
 );
 
 Material evalMaterial(vec3 p, int i)
 {
     Material m;
-    m.albedo = vec3(1,0,1);
+    m.albedo = vec3(1, 0, 1);
     m.roughness = 1;
     m.metalness = 0;
-    m.emission = vec3(1,0,1);
+    m.emission = vec3(1, 0, 1);
     if (i >= 0) {
         m.albedo = COLORS[i];
         m.emission = vec3(0);
@@ -115,8 +115,8 @@ Material evalMaterial(vec3 p, int i)
         } else if (i == 1) {
             m.roughness = 0.4;
             m.metalness = 1;
-        } else if (i == 4 && all(lessThan(abs(p.xz), lights[0].size))) {
-            m.emission = lights[0].E;
+        } else if (i == 4 && all(lessThan(abs(p.xz), LIGHTS[0].size))) {
+            m.emission = LIGHTS[0].E;
         }
     }
     return m;
@@ -152,7 +152,7 @@ mat3 formBasis(vec3 n)
 // Generate view-ray for given (sub)pixel
 vec3 getViewRay(vec2 px, float hfov)
 {
-    vec2 xy = px - uRes * 0.5;
+    vec2 xy = px - uRes.xy * 0.5;
     float z = uRes.y / tan(radians(hfov));
     vec3 d = normalize(vec3(xy, z));
     pR(d.yz, dCDir.y);
@@ -163,7 +163,7 @@ vec3 getViewRay(vec2 px, float hfov)
 // --SAMPLING------------------------------------------------------------------
 vec4 sampleLight(int i)
 {
-    AreaLight light = lights[i];
+    AreaLight light = LIGHTS[i];
     float pdf = 1 / (4 * light.size.x * light.size.y);
     mat4 S = mat4(light.size.x,            0, 0, 0,
                             0, light.size.y, 0, 0,
@@ -300,7 +300,7 @@ vec3 tracePath(vec2 px)
     for (int j = 0; j < SAMPLES_PER_PIXEL; ++j) {
         // Generate ray
         vec2 sample_px = gl_FragCoord.xy + vec2(rnd(), rnd());
-        Ray r = Ray(dCPos, getViewRay(sample_px, 45), 100);
+        Ray r = Ray(vec3(0,0,-15.5), getViewRay(sample_px, 45), 100);
 
         int bounce = 1;
         vec3 throughput = vec3(1);
@@ -318,7 +318,7 @@ vec3 tracePath(vec2 px)
             vec3 p = hit.position + hit.normal * EPSILON;
 
             // Add hacky emission on first hit to draw lights
-            if (bounce == 0)
+            if (bounce == 1)
                 ei += throughput * m.emission;
 
             // Sample lights
@@ -341,8 +341,10 @@ vec3 tracePath(vec2 px)
                     // Add light contribution when visible
                     float r2 = sr.t * sr.t;
                     vec3 lN = vec3(0, -1, 0); // TODO: generic
-                    vec3 E = lights[i].E;
-                    ei += throughput * evalBRDF(hit.normal, -r.d, sr.d, m) * E / (r2 * pdf);
+                    if (dot(lN, -sr.d) > 0) {
+                        vec3 E = LIGHTS[i].E;
+                        ei += throughput * evalBRDF(hit.normal, -r.d, sr.d, m) * E / (r2 * pdf);
+                    }
                 }
             }
 
@@ -350,7 +352,7 @@ vec3 tracePath(vec2 px)
             if (bounce >= BOUNCES && rnd() < P_TERMINATE)
                 break;
 
-            // Get direction for reflection ray
+            // Get random direction for reflection ray
             vec3 rd = cosineSampleHemisphere();
             // Rotate by normal frame
             rd = normalize(formBasis(n) * rd);
