@@ -65,7 +65,7 @@ void GUI::startFrame(
     ImGui::SetNextWindowCollapsed(true, ImGuiSetCond_Once);
     ImGui::Begin("Uniform Editor");
     ImGui::Checkbox("##Use slider time", &_useSliderTime);
-    ImGui::SameLine(); ImGui::SliderFloat("uTime", &_sliderTime, 0.f, 150.f);
+    ImGui::SameLine(); ImGui::DragFloat("uTime", &_sliderTime, 0.01f);
     for (auto& e : uniforms) {
         std::string name = e.first;
         Uniform& uniform = e.second;
