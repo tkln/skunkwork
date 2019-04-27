@@ -62,6 +62,10 @@ int main()
             reloadTime.reset();
         }
 
+        // TODO: No need to reset before switch back
+        if (gui.useSliderTime())
+            globalTime.reset();
+
         sceneProf.startSample();
         shader.bind();
         shader.setFloat(
