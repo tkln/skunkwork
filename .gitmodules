@@ -4,9 +4,9 @@
 [submodule "ext/imgui"]
 	path = ext/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "ext/rocket"]
-	path = ext/rocket
-	url = https://github.com/kusma/rocket.git
 [submodule "ext/glfw"]
 	path = ext/glfw
 	url = https://github.com/sndels/glfw.git
+[submodule "ext/rocket"]
+	path = ext/rocket
+	url = https://github.com/rocket/rocket.git
