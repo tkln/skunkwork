@@ -5,6 +5,7 @@ set(SKUNKWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/gui.cpp
     ${CMAKE_CURRENT_LIST_DIR}/log.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunkwork.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/marched.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
     ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp
@@ -19,6 +20,7 @@ set(SKUNKTOY_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/gui.cpp
     ${CMAKE_CURRENT_LIST_DIR}/log.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main_skunktoy.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/marched.cpp
     ${CMAKE_CURRENT_LIST_DIR}/quad.cpp
     ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
     ${CMAKE_CURRENT_LIST_DIR}/texture.cpp

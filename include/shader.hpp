@@ -54,6 +54,8 @@ public:
     void setVec2(const std::string& name, GLfloat x, GLfloat y);
     std::unordered_map<std::string, Uniform>& dynamicUniforms();
 
+    GLuint _progID;
+
 private:
     void setVendor();
     GLuint loadProgram(const std::string& vertPath, const std::string& fragPath,
@@ -70,7 +72,6 @@ private:
 #endif // ROCKET
 
     Vendor _vendor;
-    GLuint _progID;
     std::vector<std::vector<std::string> > _filePaths;
     std::vector<std::vector<time_t> > _fileMods;
     std::unordered_map<std::string, std::pair<UniformType, GLint>> _uniforms;
