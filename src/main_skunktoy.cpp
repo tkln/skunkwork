@@ -4,13 +4,19 @@
 #endif // _WIN32
 
 #include <GL/gl3w.h>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "imgui.h"
 
 #include "gpuProfiler.hpp"
 #include "gui.hpp"
+#include "marched.hpp"
 #include "quad.hpp"
 #include "shader.hpp"
 #include "timer.hpp"
 #include "window.hpp"
+
+using namespace glm;
 
 #ifdef _WIN32
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
@@ -33,13 +39,14 @@ int main()
     gui.init(window.ptr());
 
     Quad q;
+    Marched m;
 
     // Set up scene
     std::string vertPath(RES_DIRECTORY);
-    vertPath += "shader/basic_vert.glsl";
     std::string fragPath(RES_DIRECTORY);
-    fragPath += "shader/basic_frag.glsl";
-    Shader shader(vertPath, fragPath, "");
+    vertPath += "shader/tri_vert.glsl";
+    fragPath += "shader/tri_frag.glsl";
+    Shader triShader(vertPath, fragPath, "");
 
     Timer reloadTime;
     Timer globalTime;
@@ -47,18 +54,20 @@ int main()
     std::vector<std::pair<std::string, const GpuProfiler*>> profilers =
         {{"Scene", &sceneProf}};
 
+
+    vec3 cameraPos(0, 0, 3);
     // Run the main loop
     while (window.open()) {
         window.startFrame();
 
         if (window.drawGUI())
-            gui.startFrame(window.height(), shader.dynamicUniforms(), profilers);
+            gui.startFrame(window.height(), triShader.dynamicUniforms(), profilers);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Try reloading the shader every 0.5s
         if (reloadTime.getSeconds() > 0.5f) {
-            shader.reload();
+            triShader.reload();
             reloadTime.reset();
         }
 
@@ -66,14 +75,24 @@ int main()
         if (gui.useSliderTime())
             globalTime.reset();
 
+        ImGui::Begin("HAX");
+        ImGui::DragFloat3("campos", (float*)&cameraPos, 0.01f);
+        ImGui::End();
+
+        mat4 modelToWorld = mat4(1);
+        mat3 normalToWorld = mat3(transpose(inverse(modelToWorld)));
+        mat4 worldToClip =
+            perspective(59.f, window.width() / float(window.height()), 0.01f, 10.f) *
+            lookAt(cameraPos, vec3(0, 0, 0), vec3(0, 1, 0));
+
         sceneProf.startSample();
-        shader.bind();
-        shader.setFloat(
-            "uTime",
-            gui.useSliderTime() ? gui.sliderTime() : globalTime.getSeconds()
-        );
-        shader.setVec2("uRes", (GLfloat)window.width(), (GLfloat)window.height());
-        q.render();
+        m.update(uvec3(50), vec3(-5), vec3(5), globalTime.getSeconds());
+
+        triShader.bind();
+        glUniformMatrix4fv(glGetUniformLocation(triShader._progID, "uModelToWorld"), 1, false, (GLfloat*) &modelToWorld);
+        glUniformMatrix3fv(glGetUniformLocation(triShader._progID, "uNormalToWorld"), 1, false, (GLfloat*) &normalToWorld);
+        glUniformMatrix4fv(glGetUniformLocation(triShader._progID, "uWorldToClip"), 1, false, (GLfloat*) &worldToClip);
+        m.render();
         sceneProf.endSample();
 
         if (window.drawGUI())
