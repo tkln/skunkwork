@@ -66,8 +66,8 @@ Shader::~Shader()
 
 #ifdef ROCKET
 Shader::Shader(Shader&& other) :
-    _vendor(other._vendor),
     _progID(other._progID),
+    _vendor(other._vendor),
     _filePaths(other._filePaths),
     _fileMods(other._fileMods),
     _uniforms(other._uniforms),
@@ -80,8 +80,8 @@ Shader::Shader(Shader&& other) :
 }
 #else
 Shader::Shader(Shader&& other) :
-    _vendor(other._vendor),
     _progID(other._progID),
+    _vendor(other._vendor),
     _filePaths(other._filePaths),
     _fileMods(other._fileMods),
     _uniforms(other._uniforms),
@@ -203,7 +203,7 @@ GLuint Shader::loadProgram(const std::string& vertPath, const std::string& fragP
     if (programSuccess == GL_FALSE) {
         ADD_LOG("[shader] Error linking program %u\n", progID);
         ADD_LOG("[shader] Error code: %d", programSuccess);
-        printProgramLog(_progID);
+        printProgramLog(progID);
         glDeleteShader(vertexShader);
         glDeleteShader(geometryShader);
         glDeleteShader(fragmentShader);
