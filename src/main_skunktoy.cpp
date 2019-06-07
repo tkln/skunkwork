@@ -59,6 +59,7 @@ int main()
     std::vector<std::pair<std::string, const GpuProfiler*>> profilers =
         {{"Scene", &sceneProf}};
 
+    glEnable(GL_DEPTH_TEST);
 
     vec3 cameraPos(0, 0, 3);
     // Run the main loop
