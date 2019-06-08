@@ -64,6 +64,7 @@ int main()
     glClearColor(0.2, 0.2, 0.2, 1.0);
     vec3 cameraPos(0, 0, 3);
     // Run the main loop
+    int t = 0;
     while (window.open()) {
         window.startFrame();
 
@@ -108,6 +109,7 @@ int main()
             gui.endFrame();
 
         window.endFrame();
+        ++t;
     }
 
     gui.destroy();
