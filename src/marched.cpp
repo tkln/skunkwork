@@ -1,4 +1,5 @@
 #include "marched.hpp"
+#include "noise.h"
 
 #include <functional>
 #include <vector>
@@ -499,11 +500,8 @@ void Marched::update(const uvec3& res, const vec3& min, const vec3& max, const f
     for (int k = 0; k <= res.z; ++k) {
         const float depth = k * step;
         auto sdf = [&](const vec3& pos) {
-            const auto fSphere = [](const vec3& p, const float r) {
-                return length(p) - r;
-            };
-            const float d = fSphere(pos, 1.f);
-            return d;
+            auto pos0 = pos * sin(time);
+            return perlin_noise_3d(pos0.x + time, pos0.y + sin(time), pos0.z, 0.1f, 3, 1234);
         };
         grid.push_back(genLayer(res, vec2(min), vec2(max), depth, sdf));
     }
