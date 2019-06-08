@@ -7,8 +7,8 @@ uniform mat4 uModelToWorld;
 uniform mat3 uNormalToWorld;
 uniform mat4 uWorldToClip;
 
-out vec3 worldPos;
-out vec3 worldNormal;
+layout(location = 0) out vec3 worldPos;
+layout(location = 1) out vec3 worldNormal;
 
 void main()
 {
