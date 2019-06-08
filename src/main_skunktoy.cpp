@@ -61,6 +61,7 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
+    glClearColor(0.2, 0.2, 0.2, 1.0);
     vec3 cameraPos(0, 0, 3);
     // Run the main loop
     while (window.open()) {
