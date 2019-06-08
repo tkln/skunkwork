@@ -46,7 +46,7 @@ int main()
     vertPath += "shader/basic_vert.glsl";
     std::string fragPath(RES_DIRECTORY);
     fragPath += "shader/basic_frag.glsl";
-    Shader shader(vertPath, fragPath, "");
+    //Shader shader(vertPath, fragPath, "");
     vertPath = RES_DIRECTORY;
     vertPath += "shader/tri_vert.glsl";
     fragPath = RES_DIRECTORY;
@@ -67,13 +67,13 @@ int main()
         window.startFrame();
 
         if (window.drawGUI())
-            gui.startFrame(window.height(), shader.dynamicUniforms(), profilers);
+            gui.startFrame(window.height(), triShader.dynamicUniforms(), profilers);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Try reloading the shader every 0.5s
         if (reloadTime.getSeconds() > 0.5f) {
-            shader.reload();
+            //shader.reload();
             triShader.reload();
             reloadTime.reset();
         }
