@@ -322,7 +322,8 @@ namespace {
             const float y = min.y + step.y * j;
             verts.push_back({});
             for (int i = 0; i <= res.x; ++i) {
-                const vec3 pos(min.x + step.x * i, y, depth);
+                vec3 pos(min.x + step.x * i, y, depth);
+                pos -= vec3(1);
                 verts.back().push_back({pos, sdf(pos)});
             }
         }
