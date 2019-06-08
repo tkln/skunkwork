@@ -91,7 +91,7 @@ int main()
         mat4 modelToWorld = mat4(1);
         mat3 normalToWorld = mat3(transpose(inverse(modelToWorld)));
         mat4 worldToClip =
-            perspective(59.f, window.width() / float(window.height()), 0.01f, 10.f) *
+            perspective(45.f, window.width() / float(window.height()), 0.01f, 10.f) *
             lookAt(cameraPos, vec3(0, 0, 0), vec3(0, 1, 0));
 
         sceneProf.startSample();
