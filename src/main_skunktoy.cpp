@@ -95,7 +95,7 @@ int main()
             lookAt(cameraPos, vec3(0, 0, 0), vec3(0, 1, 0));
 
         sceneProf.startSample();
-        m.update(uvec3(50), vec3(-5), vec3(5), 0.f);
+        m.update(uvec3(40), vec3(0, 0, 0), vec3(4, 4, 4), (t * 16) / 1000.0);
 
         triShader.bind();
         glUniformMatrix4fv(glGetUniformLocation(triShader._progID, "uModelToWorld"), 1, false, (GLfloat*) &modelToWorld);
